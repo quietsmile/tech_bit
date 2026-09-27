@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>围棋</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(circle at 30% 20%, #1d3527, #07120b 72%);
+    color: #e8f2ea; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 8px; }
+  .home-button {
+    position: fixed; top: 14px; left: 14px; z-index: 30;
+    padding: 8px 13px; border-radius: 999px; text-decoration: none;
+    background: rgba(18,45,30,.88); color: #d8f3e0; border: 1px solid rgba(74,222,128,.3);
+    font-size: 12px; font-weight: 700;
+  }
+  .mode-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .mode-row button { padding: 8px 18px; border-radius: 999px; border: 1px solid rgba(74,222,128,.4); background: #0d2416; color: #d8f3e0; cursor: pointer; font-weight: 700; }
+  .mode-row button.active { background: #4ade80; color: #052012; }
+  #board { background: #dcb35c; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-width: 94vw; cursor: pointer; }
+  .info-row { display: flex; gap: 18px; margin: 10px 0 4px; font-size: 1rem; }
+  .info-row b { color: #4ade80; }
+  #controls { display: flex; gap: 12px; margin: 10px 0; }
+  #controls button { padding: 8px 20px; border: none; border-radius: 8px; background: #2f5c40; color: #e8f2ea; cursor: pointer; }
+  #msg { min-height: 20px; color: #fca5a5; font-weight: 700; }
+  #result {
+    margin-top: 10px; padding: 18px 30px; text-align: center;
+    background: #0d2416; border: 1px solid rgba(74,222,128,.4); border-radius: 16px;
+  }
+  #result .win { color: #4ade80; font-size: 1.3rem; font-weight: 800; margin: 6px 0; }
+  #result button { margin-top: 10px; padding: 8px 20px; border-radius: 8px; border: none; background: #4ade80; color: #052012; font-weight: 800; cursor: pointer; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+  <h1>⚫⚪ 围棋（9 路）</h1>
+  <div class="mode-row">
+    <button id="modeAi" class="active">人机对弈（执黑）</button>
+    <button id="modePvp">双人对弈（同屏）</button>
+  </div>
+  <div class="info-row">
+    <span id="turnInfo">黑方行棋</span>
+    <span id="capInfo">黑提 0 · 白提 0</span>
+  </div>
+  <div id="msg" style="min-height:20px"></div>
+  <div id="boardWrap">
+    <canvas id="board" width="475" height="475"></canvas>
+  </div>
+  <div id="controls">
+    <button id="passBtn">停一手（虚着）</button>
+    <button id="restartBtn">重新开始</button>
+  </div>
+  <div id="result" class="hidden"></div>
+  <script src="game.js"></script>
+</body>
+</html>

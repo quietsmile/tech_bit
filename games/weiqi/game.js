@@ -1,0 +1,268 @@
+/* 围棋 9 路规则 + 简单人机（纯 JS，无依赖）
+ * 0 空 / 1 黑 / 2 白；区域计分（子+围空），白贴 5.5 目。
+ */
+(function () {
+  'use strict';
+
+  var N = 9;
+  var KOMI = 5.5;
+  var board, current, passes, captures, history, koStr, gameOver, mode;
+  var lastMove = null; // {r,c} 或 'pass'
+
+  var canvas = document.getElementById('board');
+  var ctx = canvas.getContext('2d');
+  var M = 25, C = (canvas.width - M * 2) / (N - 1);
+  var scoreEl = document.getElementById('scoreInfo');
+  var turnEl = document.getElementById('turnInfo');
+  var capEl = document.getElementById('capInfo');
+  var msgEl = document.getElementById('msg');
+  var resultEl = document.getElementById('result');
+  var boardEl = document.getElementById('boardWrap');
+
+  function neighbors(r, c) {
+    var out = [];
+    if (r > 0) out.push([r - 1, c]);
+    if (r < N - 1) out.push([r + 1, c]);
+    if (c > 0) out.push([r, c - 1]);
+    if (c < N - 1) out.push([r, c + 1]);
+    return out;
+  }
+
+  function groupInfo(bd, r, c) {
+    var color = bd[r][c];
+    var stones = [], libs = {}, seen = {};
+    var stack = [[r, c]];
+    seen[r + ',' + c] = 1;
+    stones.push([r, c]);
+    while (stack.length) {
+      var cur = stack.pop();
+      neighbors(cur[0], cur[1]).forEach(function (n) {
+        var v = bd[n[0]][n[1]];
+        var k = n[0] + ',' + n[1];
+        if (!v && !libs[k]) { libs[k] = 1; }
+        if (v === color && !seen[k]) { seen[k] = 1; stones.push([n[0], n[1]]); stack.push([n[0], n[1]]); }
+      });
+    }
+    return { stones: stones, libs: Object.keys(libs).length };
+  }
+
+  function keyOf(bd) { return bd.map(function (row) { return row.join(''); }).join('|'); }
+
+  /* 落子尝试：返回 {legal, board, captured} */
+  function tryPlace(bd, r, c, side, koStr) {
+    if (bd[r][c] !== 0) return { legal: false, reason: '此处已有棋子' };
+    var nb = bd.map(function (row) { return row.slice(); });
+    nb[r][c] = side;
+    var opp = side === 1 ? 2 : 1;
+    var captured = 0;
+    neighbors(r, c).forEach(function (n) {
+      if (nb[n[0]][n[1]] === opp) {
+        var g = groupInfo(nb, n[0], n[1]);
+        if (g.libs === 0) {
+          g.stones.forEach(function (s) { nb[s[0]][s[1]] = 0; captured++; });
+        }
+      }
+    });
+    var own = groupInfo(nb, r, c);
+    if (own.libs === 0) return { legal: false, reason: '禁着点（落子后无气）' };
+    if (koStr && keyOf(nb) === koStr) return { legal: false, reason: '打劫：不能立即回提' };
+    return { legal: true, board: nb, captured: captured };
+  }
+
+  /* ---------- 游戏状态 ---------- */
+  function newGame(m) {
+    mode = m;
+    board = Array.from({ length: N }, function () { return Array(N).fill(0); });
+    current = 1;
+    passes = 0;
+    captures = { 1: 0, 2: 0 };
+    history = [keyOf(board)];
+    koStr = '';
+    gameOver = false;
+    lastMove = null;
+    resultEl.classList.add('hidden');
+    boardEl.classList.remove('hidden');
+    document.getElementById('controls').classList.remove('hidden');
+    updateInfo();
+    draw();
+  }
+
+  function place(r, c) {
+    if (gameOver) return;
+    var res = tryPlace(board, r, c, current, koStr);
+    if (!res.legal) { flash(res.reason); return; }
+    koStr = keyOf(board);           // 下一手不能重现当前局面
+    captures[current] += res.captured;
+    board = res.board;
+    history.push(keyOf(board));
+    passes = 0;
+    lastMove = { r: r, c: c };
+    current = current === 1 ? 2 : 1;
+    updateInfo();
+    draw();
+    if (mode === 'ai' && current === 2 && !gameOver) setTimeout(aiMove, 500);
+  }
+
+  function doPass() {
+    if (gameOver) return;
+    passes++;
+    lastMove = 'pass';
+    if (passes >= 2) { endGame(); return; }
+    current = current === 1 ? 2 : 1;
+    koStr = '';
+    updateInfo();
+    draw();
+    if (mode === 'ai' && current === 2 && !gameOver) setTimeout(aiMove, 500);
+  }
+
+  function flash(text) {
+    msgEl.textContent = text;
+    setTimeout(function () { if (msgEl.textContent === text) msgEl.textContent = ''; }, 1600);
+  }
+
+  /* ---------- 简单人机（白） ---------- */
+  function aiMove() {
+    if (gameOver) return;
+    var best = null, bestScore = -Infinity;
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+      if (board[r][c] !== 0) continue;
+      var res = tryPlace(board, r, c, 2, koStr);
+      if (!res.legal) continue;
+      var score = res.captured * 120;
+      // 打吃：让黑群只剩 1 气
+      var oppAtari = 0;
+      neighbors(r, c).forEach(function (n) {
+        if (board[n[0]][n[1]] === 1) {
+          var nb = board.map(function (row) { return row.slice(); });
+          nb[r][c] = 2;
+          neighbors(n[0], n[1]).forEach(function (nn) {
+            if (nb[nn[0]][nn[1]] === 1) {
+              var g = groupInfo(nb, nn[0], nn[1]);
+              if (g.libs === 1) oppAtari++;
+            }
+          });
+        }
+      });
+      score += oppAtari * 35;
+      // 逃气：自己相邻棋群只剩 1 气，落子后气增多
+      var nearOwn = 0, nearAny = 0;
+      neighbors(r, c).forEach(function (n) {
+        if (board[n[0]][n[1]] !== 0) { nearAny++; nearOwn += (board[n[0]][n[1]] === 2 ? 1 : 0); }
+      });
+      score += nearAny * 6;
+      score += (r === 2 || r === 4 || r === 6) && (c === 2 || c === 4 || c === 6) ? 4 : 0; // 星位附近
+      score += Math.random() * 8;
+      if (score > bestScore) { bestScore = score; best = { r: r, c: c }; }
+    }
+    if (!best) { doPass(); return; }
+    place(best.r, best.c);
+  }
+
+  /* ---------- 终局计分（区域法） ---------- */
+  function endGame() {
+    gameOver = true;
+    var stones = { 1: 0, 2: 0 };
+    var visited = {};
+    var terr = { 1: 0, 2: 0 };
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) stones[board[r][c]]++;
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++) {
+      if (board[r][c] === 0 && !visited[r + ',' + c]) {
+        var region = [], stack = [[r, c]];
+        visited[r + ',' + c] = 1;
+        var touch = {};
+        while (stack.length) {
+          var cur = stack.pop();
+          region.push(cur);
+          neighbors(cur[0], cur[1]).forEach(function (n) {
+            var v = board[n[0]][n[1]], k = n[0] + ',' + n[1];
+            if (v === 0) { if (!visited[k]) { visited[k] = 1; stack.push([n[0], n[1]]); } }
+            else touch[v] = 1;
+          });
+        }
+        if (touch[1] && !touch[2]) terr[1] += region.length;
+        else if (touch[2] && !touch[1]) terr[2] += region.length;
+      }
+    }
+    var blackScore = stones[1] + terr[1];
+    var whiteScore = stones[2] + terr[2] + KOMI;
+    var winner = blackScore > whiteScore ? '黑棋胜' : '白棋胜';
+    var diff = Math.abs(blackScore - whiteScore).toFixed(1);
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '<h2>🏁 终局</h2>' +
+      '<p>黑 ' + blackScore + ' 目 · 白 ' + whiteScore + ' 目（含贴目 ' + KOMI + '）</p>' +
+      '<p class="win">' + winner + '（领先 ' + diff + '）</p>' +
+      '<button onclick="location.reload()">再来一局</button>';
+    boardEl.classList.add('hidden');
+    document.getElementById('controls').classList.add('hidden');
+  }
+
+  /* ---------- 绘制 ---------- */
+  function updateInfo() {
+    turnEl.textContent = gameOver ? '对局结束' : (current === 1 ? '黑方行棋' : '白方行棋');
+    capEl.textContent = '黑提 ' + captures[1] + ' · 白提 ' + captures[2];
+  }
+
+  function draw() {
+    ctx.fillStyle = '#dcb35c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#5a3c1a';
+    for (var i = 0; i < N; i++) {
+      ctx.beginPath();
+      ctx.moveTo(M, M + i * C); ctx.lineTo(M + (N - 1) * C, M + i * C);
+      ctx.moveTo(M + i * C, M); ctx.lineTo(M + i * C, M + (N - 1) * C);
+      ctx.stroke();
+    }
+    // 星位
+    [[2, 2], [6, 2], [2, 6], [6, 6], [4, 4]].forEach(function (p) {
+      ctx.beginPath();
+      ctx.arc(M + p[0] * C, M + p[1] * C, 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#5a3c1a';
+      ctx.fill();
+    });
+    // 落子
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+      var v = board[r][c];
+      if (!v) continue;
+      var x = M + c * C, y = M + r * C;
+      ctx.beginPath();
+      ctx.arc(x, y, C * 0.44, 0, Math.PI * 2);
+      ctx.fillStyle = v === 1 ? '#111' : '#f5f5f5';
+      ctx.fill();
+      ctx.strokeStyle = v === 1 ? '#000' : '#999';
+      ctx.stroke();
+      if (lastMove && lastMove.r === r && lastMove.c === c) {
+        ctx.beginPath();
+        ctx.arc(x, y, C * 0.16, 0, Math.PI * 2);
+        ctx.fillStyle = v === 1 ? '#f5f5f5' : '#e03131';
+        ctx.fill();
+      }
+    }
+  }
+
+  /* ---------- 事件 ---------- */
+  canvas.addEventListener('click', function (e) {
+    if (gameOver) return;
+    if (mode === 'ai' && current === 2) return;
+    var rect = canvas.getBoundingClientRect();
+    var sx = rect.width / canvas.width, sy = rect.height / canvas.height;
+    var x = (e.clientX - rect.left) / sx, y = (e.clientY - rect.top) / sy;
+    var c = Math.round((x - M) / C), r = Math.round((y - M) / C);
+    if (r < 0 || r >= N || c < 0 || c >= N) return;
+    if (Math.abs(x - (M + c * C)) > C * 0.42 || Math.abs(y - (M + r * C)) > C * 0.42) return;
+    place(r, c);
+  });
+  /* 供单元测试使用 */
+  if (typeof window !== 'undefined') window.WeiqiRules = { tryPlace, groupInfo, keyOf, N: N };
+
+  document.getElementById('passBtn').addEventListener('click', doPass);
+  document.getElementById('restartBtn').addEventListener('click', function () { newGame(mode); });
+  document.getElementById('modeAi').addEventListener('click', function () { setMode('ai'); });
+  document.getElementById('modePvp').addEventListener('click', function () { setMode('pvp'); });
+  function setMode(m) {
+    document.getElementById('modeAi').classList.toggle('active', m === 'ai');
+    document.getElementById('modePvp').classList.toggle('active', m === 'pvp');
+    newGame(m);
+  }
+
+  newGame('ai');
+})();
