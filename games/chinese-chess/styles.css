@@ -1,0 +1,82 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #2b2118;
+  color: #f0e6d2;
+}
+h1 { font-size: 26px; letter-spacing: 6px; }
+.toolbar { display: flex; gap: 12px; align-items: center; }
+#status { font-size: 18px; min-width: 180px; text-align: center; }
+button {
+  padding: 8px 20px;
+  font-size: 15px;
+  border: 1px solid #8b6f47;
+  border-radius: 6px;
+  background: #4a3826;
+  color: #f0e6d2;
+  cursor: pointer;
+}
+button:hover { background: #5d4730; }
+#board {
+  width: min(92vw, 500px);
+  background: #e8c98f;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+  cursor: pointer;
+}
+.grid { stroke: #6b4f2a; stroke-width: 1.4; fill: none; }
+.frame { stroke: #6b4f2a; stroke-width: 3; fill: none; }
+.river { fill: #8a6b3f; font-size: 22px; text-anchor: middle; letter-spacing: 4px; }
+.mark { stroke: #a5834e; stroke-width: 1.2; fill: none; }
+.hint { fill: rgba(30,120,60,.55); stroke: #1e6e3a; stroke-width: 1.5; pointer-events: none; }
+.sel { fill: none; stroke: #d4a017; stroke-width: 2.5; pointer-events: none; }
+.pc { fill: #f5e7c8; stroke: #7a5a2e; stroke-width: 2; }
+.piece.black .pc { fill: #e8dcc0; }
+.piece.red text { fill: #b02218; }
+.piece.black text { fill: #1c1c1c; }
+.pt {
+  font-size: 26px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: "Kaiti SC", "STKaiti", serif;
+  pointer-events: none;
+}
+
+/* 开始 / 结算页 */
+.start-screen {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8,15,25,.62);
+  backdrop-filter: blur(4px);
+}
+.hidden { display: none; }
+.start-card {
+  background: #101c2c; border: 1px solid rgba(125,211,252,.28);
+  border-radius: 16px; padding: 28px 36px; text-align: center; color: #e6f1ff;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  display: flex; flex-direction: column; gap: 12px; min-width: 280px;
+}
+.start-card h2 { margin: 0 0 6px; }
+.start-card button {
+  padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(125,211,252,.3);
+  background: rgba(30,48,70,.9); color: #e6f1ff; font-size: 15px; cursor: pointer;
+}
+.start-card button:hover { border-color: #7dd3fc; }
+.start-card button.primary {
+  background: linear-gradient(135deg,#2563eb,#38bdf8); border: none; font-weight: 700;
+}
+.difficulty-row { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.difficulty-row select { padding: 6px 10px; border-radius: 8px; }
+.badge-box {
+  border: 1px solid rgba(250,204,21,.5); border-radius: 12px;
+  padding: 12px; background: rgba(250,204,21,.08);
+}
+.badge { font-size: 22px; font-weight: 800; color: #fde047; }
+.badge-note { margin: 6px 0 0; font-size: 12px; color: #9fb3c8; }

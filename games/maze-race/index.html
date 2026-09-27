@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>迷宫竞速 · 在线对战</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; color:#e6f2ff; background:radial-gradient(circle at 20% 10%, #1f3552, #07111d 68%); }
+    .home-button { position:fixed; top:14px; right:14px; z-index:999; padding:8px 13px; border-radius:999px; text-decoration:none; background:rgba(18,30,45,.88); color:#dbeafe; border:1px solid rgba(125,211,252,.28); font-size:12px; font-weight:700; cursor:pointer; pointer-events:auto; }
+    .home-button:hover { border-color:#7dd3fc; color:#fff; }
+    main { max-width:1100px; margin:0 auto; padding:26px 18px 48px; }
+    header { text-align:center; margin-bottom:18px; }
+    h1 { margin:0; font-size:clamp(28px,5vw,46px); letter-spacing:.06em; }
+    .subtitle { color:#94b5ca; font-size:14px; margin:6px 0 0; }
+    .card { background:rgba(9,20,34,.82); border:1px solid rgba(125,211,252,.2); border-radius:20px; padding:18px; box-shadow:0 24px 70px rgba(0,0,0,.3); }
+    #connectCard { max-width:460px; margin:0 auto; }
+    label { display:block; margin:12px 0 6px; color:#9fb6cc; font-size:13px; }
+    input { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(148,163,184,.28); background:#0b1a2a; color:#fff; font-size:15px; outline:none; }
+    input:focus { border-color:#38bdf8; box-shadow:0 0 0 4px rgba(56,189,248,.15); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+    button { padding:12px 16px; border:0; border-radius:12px; background:linear-gradient(120deg,#38bdf8,#4ade80); color:#05121d; font-weight:800; cursor:pointer; }
+    button.secondary { background:#20374a; color:#d9f0ff; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    #connectMsg { min-height:20px; margin-top:12px; color:#fca5a5; font-size:13px; }
+    #gameCard { position:relative; }
+    #gameCard.hidden, #connectCard.hidden { display:none; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .room { font-family:ui-monospace; font-size:20px; color:#7dd3fc; font-weight:800; }
+    .players { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; }
+    .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.24); background:rgba(255,255,255,.05); }
+    #status { min-height:22px; margin:12px 0; color:#b8d5e6; font-size:14px; }
+    .board-wrap { position:relative; }
+    canvas { display:block; width:100%; height:auto; border-radius:18px; background:#081220; border:1px solid rgba(125,211,252,.22); }
+    #overlay { position:absolute; inset:0; display:grid; place-items:center; background:rgba(3,10,19,.82); border-radius:18px; }
+    #overlay.hidden { display:none; }
+    .overlay-card { text-align:center; padding:24px; }
+    #overlayTitle { font-size:26px; margin:0 0 8px; }
+    #overlayDesc { color:#a8c1d8; font-size:14px; margin:0 0 18px; }
+    .controls { margin-top:14px; color:#8fb1c9; font-size:12px; line-height:1.8; }
+    kbd { background:#12283d; border:1px solid #3a576f; padding:2px 6px; border-radius:5px; }
+  </style>
+</head>
+<body>
+  <a id="homeButton" class="home-button" href="/">🏠 游戏中心</a>
+  <main>
+    <header>
+      <h1>🏃 迷宫竞速</h1>
+      <p class="subtitle">真实联机对战 · 连续移动 · 吃鞋加速 · 可叠加</p>
+    </header>
+
+    <div id="connectCard" class="card">
+      <label>你的名字</label>
+      <input id="nameInput" maxlength="12" placeholder="小学生选手">
+      <label>房间码</label>
+      <div class="row">
+        <button id="joinBtn" class="primary">🎮 进入房间</button>
+      </div>
+      <p>创建后把房间码发给另一台 Mac，对方加入后自动开始。</p>
+      <div id="connectMsg"></div>
+    </div>
+
+    <div id="gameCard" class="card hidden">
+      <div class="topbar">
+        <div class="room">房间 <span id="roomCode"></span></div>
+        <div class="players" id="playerPills"></div>
+      </div>
+      <div id="status">等待玩家加入…</div>
+      <div class="board-wrap">
+        <canvas id="board" width="920" height="600"></canvas>
+        <div id="overlay" class="hidden">
+          <div class="overlay-card">
+            <h2 id="overlayTitle">等待开始</h2>
+            <p id="overlayDesc">两名玩家加入后自动倒数。</p>
+            <button id="overlayBtn" class="hidden">进入下一关</button>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        移动：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向键 · 
+        👟 加速可叠加，每层更长更快 · 👻 短暂穿墙 · 🐌 减速对手 · 🪙 金币 · 
+        道具对每位玩家独立刷新
+      </div>
+    </div>
+  </main>
+  <script src="game.js"></script>
+  <script>
+    document.getElementById('homeButton').href = `${location.protocol}//${location.hostname}:8100/games/index.html`;
+  </script>
+</body>
+</html>

@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>抓人游戏</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: ui-rounded, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #07111d; }
+    #game { display: block; width: 100vw; height: 100vh; touch-action: none; }
+    .glass {
+      color: #dceafe;
+      background: rgba(8, 18, 32, .68);
+      border: 1px solid rgba(125, 211, 252, .22);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+    }
+    #panelControls {
+      position: fixed; z-index: 13; right: 12px; top: 58px;
+      display: flex; gap: 7px;
+    }
+    .panel-toggle {
+      padding: 7px 10px; border-radius: 999px; cursor: pointer;
+      border: 1px solid rgba(125,211,252,.26); background: rgba(8,18,32,.78);
+      color: #b9d8ef; font-size: 11px; font-weight: 800; backdrop-filter: blur(10px);
+    }
+    .panel-toggle:hover, .panel-toggle.active { border-color: #7dd3fc; color: #fff; }
+    #hud {
+      position: fixed; z-index: 14; right: 12px; top: 96px;
+      width: min(310px, calc(100vw - 24px)); max-height: min(68vh, 540px);
+      overflow: auto; padding: 12px 14px;
+      transform: translateX(calc(100% + 24px)); transition: transform .22s ease;
+    }
+    #hud.open { transform: translateX(0); }
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .drawer-close {
+      width: 25px; height: 25px; border-radius: 50%; border: 1px solid rgba(148,163,184,.2);
+      background: rgba(255,255,255,.05); color: #b9d8ef; cursor: pointer; font-size: 12px;
+    }
+    #hud h1 { margin: 0 0 4px; font-size: 16px; letter-spacing: .04em; }
+    #hud .subtitle { color: #8fb1c9; font-size: 10px; margin-bottom: 9px; }
+    #board { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+    #board li {
+      display: grid; grid-template-columns: 25px 1fr auto; gap: 4px 7px; align-items: center;
+      min-width: 222px; padding: 7px 8px; border-radius: 10px;
+      border: 1px solid rgba(148,163,184,.13); background: rgba(255,255,255,.045);
+    }
+    #board .rank { color: #7dd3fc; font-weight: 800; font-size: 13px; }
+    #board .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    #board .metrics { grid-column: 2 / 4; color: #9fb6cc; font-size: 10px; line-height: 1.35; }
+    #board .speed { color: #86efac; font-weight: 800; font-size: 13px; }
+    #board .me { border-color: rgba(125,211,252,.45); background: rgba(56,189,248,.11); }
+    #board .me .name { color: #fff; font-weight: 800; }
+    #connection { margin-top: 8px; font-size: 11px; color: #7dd3fc; }
+    #legend {
+      position: fixed; z-index: 14; left: 12px; top: 58px;
+      width: min(330px, calc(100vw - 24px)); max-height: min(70vh, 540px);
+      overflow: auto; padding: 12px 14px; font-size: 11px; color: #b8c9db;
+      transform: translateX(calc(-100% - 24px)); transition: transform .22s ease;
+    }
+    #legend.open { transform: translateX(0); }
+    #legend b { color: #e8f5ff; font-size: 12px; }
+    #legend .row { display: flex; flex-wrap: wrap; gap: 5px 8px; margin-top: 7px; }
+    #legend span { white-space: nowrap; padding: 3px 6px; border-radius: 7px; background: rgba(255,255,255,.06); }
+    #achievements-list { display: grid; gap: 5px; margin-top: 7px; }
+    #achievements-list .achievement {
+      display: grid; grid-template-columns: 24px 1fr; gap: 7px; align-items: center;
+      padding: 6px 7px; border-radius: 9px; background: rgba(255,255,255,.045);
+      opacity: .42;
+    }
+    #achievements-list .achievement.unlocked {
+      border: 1px solid rgba(125,211,252,.28);
+      background: rgba(56,189,248,.10);
+      opacity: 1;
+    }
+    #achievements-list .icon { text-align: center; }
+    #achievements-list b { display: block; font-size: 11px; color: #e8f5ff; }
+    #achievements-list small { display: block; color: #9fb6cc; font-size: 10px; }
+    #share { margin-top: 10px; color: #9fb6cc; font-size: 11px; line-height: 1.45; }
+    #feedback {
+      position: fixed; z-index: 7; left: 50%; top: 18px; transform: translateX(-50%) translateY(-130%);
+      padding: 11px 18px; border-radius: 14px; font-weight: 700; color: #fff; transition: .18s ease;
+      border: 1px solid rgba(255,255,255,.2); background: rgba(15,23,42,.88);
+    }
+    #feedback.show { transform: translateX(-50%) translateY(0); }
+    #feedback.success { color: #86efac; border-color: rgba(74,222,128,.5); }
+    #feedback.error { color: #fecaca; border-color: rgba(248,113,113,.55); }
+    #worldPanel {
+      position: fixed; z-index: 3; left: 50%; top: 16px; transform: translateX(-50%);
+      padding: 9px 13px; font-size: 12px; font-weight: 700; color: #e8f5ff; text-align: center;
+    }
+    #exitWorldButton {
+      position: fixed; z-index: 9; left: 50%; top: 62px; transform: translateX(-50%);
+      padding: 9px 15px; border-radius: 12px; cursor: pointer;
+      border: 1px solid rgba(248,113,113,.52); background: rgba(30,10,16,.88); color: #fecaca;
+      font-size: 12px; font-weight: 800; backdrop-filter: blur(12px);
+    }
+    #exitWorldButton:hover { border-color: #f87171; color: #fff; background: rgba(80,16,25,.92); }
+    #exitWorldButton:disabled { opacity: .55; cursor: not-allowed; }
+    #overlay {
+      position: fixed; z-index: 6; inset: 0; display: grid; place-items: center;
+      background: radial-gradient(circle at 50% 35%, #172c45, #050b12 72%); color: #e2f2ff;
+    }
+    .panel {
+      width: min(92vw, 440px); padding: 26px; text-align: center;
+      background: rgba(9, 20, 34, .82); border: 1px solid rgba(125, 211, 252, .22);
+      border-radius: 24px; box-shadow: 0 30px 80px rgba(0, 0, 0, .38);
+    }
+    .panel h1 { font-size: 31px; margin: 0 0 6px; }
+    .panel p { color: #94b4cb; font-size: 13px; line-height: 1.6; margin: 0 0 18px; }
+    .input {
+      width: 100%; padding: 13px 15px; color: white; border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, .28); background: #0b1a2a; font-size: 15px; outline: none;
+    }
+    .input:focus { border-color: #38bdf8; box-shadow: 0 0 0 4px rgba(56, 189, 248, .15); }
+    .name-row { display: flex; gap: 8px; }
+    .name-row .input { flex: 1; }
+    .dice-btn {
+      padding: 0 14px; border-radius: 14px; cursor: pointer;
+      border: 1px solid rgba(56, 189, 248, .35); background: #0b1a2a; font-size: 17px;
+    }
+    .dice-btn:hover { border-color: #38bdf8; background: #10263c; }
+    .join {
+      width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 14px;
+      background: linear-gradient(120deg, #38bdf8, #4ade80); color: #05121c;
+      font-size: 15px; font-weight: 800; cursor: pointer;
+    }
+    #quiz {
+      position: fixed; z-index: 8; inset: 0; display: grid; place-items: center;
+      background: rgba(3, 8, 16, .78); backdrop-filter: blur(7px);
+    }
+    #quiz .panel { width: min(94vw, 620px); text-align: left; }
+    .quiz-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .quiz-badge { font-size: 12px; font-weight: 800; padding: 5px 9px; border-radius: 8px; color: #04121d; }
+    .quiz-timer { color: #8fb1c9; font-size: 12px; }
+    #skipButton {
+      width: 100%; margin-top: 13px; padding: 10px; border-radius: 12px; cursor: pointer;
+      border: 1px solid rgba(148,163,184,.28); background: #0b1a2a; color: #b8c9db; font-weight: 700;
+    }
+    #skipButton:disabled { opacity: .42; cursor: not-allowed; }
+    #skipButton:not(:disabled):hover { border-color: #38bdf8; color: #e8f5ff; }
+    #question { font-size: 21px; line-height: 1.45; color: #f2f8ff; margin: 0 0 18px; }
+    #choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .choice {
+      display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 11px 13px;
+      border: 1px solid rgba(148, 163, 184, .24); border-radius: 14px; background: #0b1a2a;
+      color: #e8f5ff; font-size: 16px; text-align: left; cursor: pointer; transition: .12s;
+    }
+    .choice:hover:not(:disabled) { border-color: #38bdf8; transform: translateY(-1px); background: #102338; }
+    .choice:disabled { cursor: default; opacity: .7; }
+    .choice .num {
+      width: 24px; height: 24px; display: grid; place-items: center; flex: 0 0 auto;
+      border-radius: 7px; background: rgba(56,189,248,.16); color: #7dd3fc; font-size: 12px; font-weight: 800;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 620px) {
+      #choices { grid-template-columns: 1fr; }
+      #question { font-size: 18px; }
+      #legend, #hud { width: calc(100vw - 24px); }
+    }
+  
+    .home-button {
+      position: fixed; top: 14px; right: 14px; z-index: 30;
+      padding: 8px 13px; border-radius: 999px; text-decoration: none;
+      background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28);
+      font-size: 12px; font-weight: 700; backdrop-filter: blur(8px);
+    }
+    .home-button:hover { border-color: #7dd3fc; color: #fff; }
+
+  </style>
+</head>
+<body>
+  <a id="homeButton" class="home-button" href="/games/index.html">🏠 游戏中心</a>
+
+  <canvas id="game"></canvas>
+
+  <div id="panelControls" class="hidden">
+    <button id="rulesToggle" class="panel-toggle">📖 规则</button>
+    <button id="boardToggle" class="panel-toggle">🏆 排行</button>
+  </div>
+
+  <div id="hud" class="glass hidden">
+    <div class="drawer-head">
+      <h1>实时排行榜</h1>
+      <button id="boardClose" class="drawer-close">✕</button>
+    </div>
+    <div class="subtitle">按当前速度排序</div>
+    <ol id="board"></ol>
+    <div id="connection">connecting…</div>
+    <div id="share" class="hidden"></div>
+  </div>
+
+  <div id="legend" class="glass hidden">
+    <div class="drawer-head">
+      <b>游戏规则</b>
+      <button id="rulesClose" class="drawer-close">✕</button>
+    </div>
+    <div class="row" style="margin-top:9px">
+      <span style="color:#a5f3fc">移动 WASD / 方向键</span>
+      <span style="color:#fde68a">答题 1–4</span>
+      <span style="color:#86efac">跳过 Q</span>
+    </div>
+    <b style="display:block;margin-top:10px">吃光点</b>
+    <div class="row">
+      <span>每吃 1 个 · 身体 +2%</span>
+      <span>尾长初始为身长 10%</span>
+      <span>每次吃点 · 尾长 +15%</span>
+    </div>
+    <b style="display:block;margin-top:10px">成就</b>
+    <div id="achievements-list" class="achievements"></div>
+    <b style="display:block;margin-top:10px">逃跑范围</b>
+    <div class="row">
+      <span>1分 · 不动</span>
+      <span>2分以上 · 只在玩家 3 秒可达范围内逃跑</span>
+    </div>
+    <b style="display:block;margin-top:10px">光点图例</b>
+    <div class="row">
+      <span>1分 · 直接吃</span>
+      <span>2分 · 十以内数学</span>
+      <span>3分 · 一年级语/数/英</span>
+      <span>4分 · 二年级</span>
+      <span>5分 · 三年级</span>
+      <span>6分 · 四年级</span>
+      <span>7分 · 五年级</span>
+      <span>8分 · 六年级</span>
+      <span>9–10分 · 竞赛题</span>
+    </div>
+    <b style="display:block;margin-top:10px;color:#e8f5ff">小世界</b>
+    <div class="row">
+      <span style="color:#86efac">低级 ≤2分直接吃</span>
+      <span style="color:#7dd3fc">中级 ≤3分直接吃</span>
+      <span style="color:#d8b4fe">高级 ≤4分直接吃</span>
+      <span style="color:#fde68a">顶级 ≤5分直接吃</span>
+      <span>各 10 个题点，吃完消失</span>
+    </div>
+  </div>
+
+  <div id="feedback"></div>
+  <div id="worldPanel" class="glass hidden"></div>
+  <button id="exitWorldButton" class="hidden">退出小世界（X）</button>
+
+  <div id="overlay">
+    <div class="panel">
+      <h1>抓人游戏</h1>
+      <p>初始速度 5，上限 150。高分点只在你 3 秒可达范围内逃跑；每吃 1 个光点身体 +2%，尾长额外 +4%，解锁专属成就。</p>
+    <div class="name-row">
+      <input id="name" class="input" maxlength="14" placeholder="你的名字" autocomplete="off">
+      <button id="diceButton" class="dice-btn" title="随机换一个名字">🎲</button>
+    </div>
+      <button id="joinButton" class="join">进入游戏</button>
+      <div id="error" style="min-height:20px;margin-top:10px;color:#fca5a5;font-size:13px"></div>
+    </div>
+  </div>
+
+  <div id="quiz" class="hidden">
+    <div class="panel">
+      <div class="quiz-head">
+        <div id="quizBadge" class="quiz-badge">题目</div>
+        <div class="quiz-timer">答对加速 · 答错扣 10% 速度</div>
+      </div>
+      <p id="question">加载中…</p>
+      <div id="choices"></div>
+      <button id="skipButton">安全跳过这道题（不扣分 / 不消耗题目）</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const hud = document.getElementById("hud");
+    const legend = document.getElementById("legend");
+    const share = document.getElementById("share");
+    const board = document.getElementById("board");
+    const connection = document.getElementById("connection");
+    const nameInput = document.getElementById("name");
+    const joinButton = document.getElementById("joinButton");
+    const diceButton = document.getElementById("diceButton");
+    const errorBox = document.getElementById("error");
+    const quizEl = document.getElementById("quiz");
+    const quizBadge = document.getElementById("quizBadge");
+    const questionEl = document.getElementById("question");
+    const choicesEl = document.getElementById("choices");
+    const feedbackEl = document.getElementById("feedback");
+    const worldPanel = document.getElementById("worldPanel");
+    const homeButton = document.getElementById("homeButton");
+    const exitWorldButton = document.getElementById("exitWorldButton");
+    const skipButton = document.getElementById("skipButton");
+    const panelControls = document.getElementById("panelControls");
+    const rulesToggle = document.getElementById("rulesToggle");
+    const boardToggle = document.getElementById("boardToggle");
+    const rulesClose = document.getElementById("rulesClose");
+    const boardClose = document.getElementById("boardClose");
+    const achievementsList = document.getElementById("achievements-list");
+
+    const WORLD = { width: 960, height: 600 };
+    let playerId = null;
+    let latest = { players: [], coins: [] };
+    let renderedPlayers = new Map();
+    const keys = new Set();
+    let connected = false;
+    let shownQuestionId = null;
+    let answering = false;
+    let exitingWorld = false;
+    let inputTimer, stateTimer;
+
+    const VALUE_COLORS = ["", "#a3e635", "#22c55e", "#38bdf8", "#6366f1", "#a855f7", "#d946ef", "#f97316", "#fb7185", "#ef4444", "#fbbf24"];
+    const CATEGORY = {
+      instant: { text: "直接", glyph: "直", color: "#4ade80", label: "直接吃" },
+      math: { text: "数学", glyph: "数", color: "#38bdf8", label: "数学" },
+      chinese: { text: "语文", glyph: "语", color: "#f472b6", label: "语文" },
+      english: { text: "英语", glyph: "英", color: "#facc15", label: "英语" },
+      competition: { text: "竞赛", glyph: "竞", color: "#ef4444", label: "竞赛" }
+    };
+
+    homeButton.href = `${location.protocol}//${location.hostname}:8100/games/index.html`;
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = innerWidth * dpr;
+      canvas.height = innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    addEventListener("resize", resize); resize();
+
+    function inputVector() {
+      if (latest.quiz) return { dx: 0, dy: 0 };
+      let x = 0, y = 0;
+      if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
+      if (keys.has("KeyD") || keys.has("ArrowRight")) x += 1;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) y -= 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) y += 1;
+      const len = Math.hypot(x, y);
+      return len ? { dx: x / len, dy: y / len } : { dx: 0, dy: 0 };
+    }
+
+    async function post(path, body) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(res.status);
+      return res.json();
+    }
+
+    async function join(name) {
+      joinButton.disabled = true; joinButton.textContent = "连接中…"; errorBox.textContent = "";
+      try {
+        const data = await post("/join", { name });
+        playerId = data.player.id;
+        overlay.classList.add("hidden");
+        hud.classList.remove("hidden");
+        legend.classList.remove("hidden");
+        share.classList.remove("hidden");
+        panelControls.classList.remove("hidden");
+        share.textContent = `邀请另一台 Mac：${location.href}`;
+        connection.textContent = "connected"; connected = true;
+        inputTimer = setInterval(sendInput, 66);
+        stateTimer = setInterval(fetchState, 66);
+      } catch (e) {
+        errorBox.textContent = "连接失败，请确认服务器还在运行。";
+        joinButton.disabled = false; joinButton.textContent = "进入游戏";
+      }
+    }
+
+    async function sendInput() {
+      if (!playerId) return;
+      try { await post("/input", { id: playerId, ...inputVector() }); }
+      catch (_) { connected = false; }
+    }
+
+    async function fetchState() {
+      if (!playerId) return;
+      try {
+        const res = await fetch(`/state?id=${playerId}&t=${Date.now()}`, { cache: "no-store" });
+        latest = await res.json();
+        connected = true;
+        if (latest.world) {
+          WORLD.width = latest.world.width;
+          WORLD.height = latest.world.height;
+        }
+        syncWorldPanel();
+        syncPlayers(); syncQuiz(); syncFeedback();
+        syncAchievements();
+      } catch (_) { connected = false; }
+    }
+
+    function syncPlayers() {
+      for (const p of latest.players) {
+        const old = renderedPlayers.get(p.id);
+        if (!old) renderedPlayers.set(p.id, { x: p.x, y: p.y, ...p });
+        else Object.assign(old, p);
+      }
+      const ids = new Set(latest.players.map(p => p.id));
+      for (const id of [...renderedPlayers.keys()]) if (!ids.has(id)) renderedPlayers.delete(id);
+    }
+
+    function syncQuiz() {
+      const q = latest.quiz;
+      if (!q) {
+        quizEl.classList.add("hidden");
+        shownQuestionId = null; answering = false;
+        return;
+      }
+      if (q.question.id === shownQuestionId) return;
+      shownQuestionId = q.question.id; answering = false;
+      quizBadge.textContent = `${q.value} 分 · ${CATEGORY[q.question.category]?.label || "题目"}`;
+      quizBadge.style.background = CATEGORY[q.question.category]?.color || "#38bdf8";
+      questionEl.textContent = q.question.text;
+      skipButton.disabled = q.skips_left <= 0;
+      skipButton.textContent = `安全跳过（剩余 ${q.skips_left} 次 · Q）`;
+      choicesEl.innerHTML = "";
+      q.question.choices.forEach((choice, index) => {
+        const btn = document.createElement("button");
+        btn.className = "choice";
+        btn.innerHTML = `<span class="num">${index + 1}</span><span></span>`;
+        btn.lastElementChild.textContent = choice;
+        btn.onclick = () => answerQuestion(choice, btn);
+        choicesEl.appendChild(btn);
+      });
+      quizEl.classList.remove("hidden");
+    }
+
+    async function answerQuestion(choice, btn) {
+      if (!latest.quiz || answering) return;
+      answering = true;
+      [...choicesEl.querySelectorAll("button")].forEach(b => b.disabled = true);
+      btn.style.borderColor = "#38bdf8";
+      try {
+        const result = await post("/answer", {
+          id: playerId,
+          question_id: latest.quiz.question.id,
+          choice
+        });
+        if (!result.correct) {
+          for (const b of choicesEl.querySelectorAll("button")) {
+            if (b.lastElementChild.textContent === String(result.correct_answer)) {
+              b.style.borderColor = "#4ade80"; b.style.color = "#86efac";
+            }
+          }
+        }
+      } catch (_) { connected = false; }
+      latest.quiz = null;
+      quizEl.classList.add("hidden");
+    }
+
+    function syncFeedback() {
+      const f = latest.feedback;
+      if (!f) { feedbackEl.classList.remove("show"); return; }
+      feedbackEl.textContent = f.message;
+      feedbackEl.className = `show ${f.kind}`;
+    }
+
+    async function skipQuestion() {
+      if (!latest.quiz || answering) return;
+      if ((latest.quiz.skips_left || 0) <= 0) return;
+      answering = true;
+      skipButton.disabled = true;
+      try {
+        const result = await post("/skip", { id: playerId });
+        if (result.ok) {
+          latest.quiz = null;
+          shownQuestionId = null;
+          quizEl.classList.add("hidden");
+        }
+      } catch (_) { connected = false; }
+      answering = false;
+    }
+
+    function syncWorldPanel() {
+      const active = latest.active_world;
+      if (active) {
+        worldPanel.textContent = `${active.label} · 剩余 ${active.remaining}/${active.total} · ≤${active.direct_max}分直接吃`;
+        worldPanel.style.borderColor = `${active.color}88`;
+        worldPanel.classList.remove("hidden");
+        exitWorldButton.classList.remove("hidden");
+        exitWorldButton.disabled = exitingWorld;
+      } else {
+        const count = (latest.worlds || []).length;
+        if (count) {
+          worldPanel.textContent = `主地图上有 ${count} 个小世界入口`;
+          worldPanel.style.borderColor = "rgba(125,211,252,.22)";
+          worldPanel.classList.remove("hidden");
+        } else {
+          worldPanel.classList.add("hidden");
+        }
+        exitWorldButton.classList.add("hidden");
+      }
+    }
+
+    async function exitWorld() {
+      if (!latest.active_world || exitingWorld) return;
+      exitingWorld = true;
+      exitWorldButton.disabled = true;
+      try {
+        const result = await post("/exit_world", { id: playerId });
+        if (result.ok) {
+          latest.quiz = null;
+          latest.active_world = null;
+          latest.world = { width: 960, height: 600 };
+          WORLD.width = 960;
+          WORLD.height = 600;
+          shownQuestionId = null;
+          quizEl.classList.add("hidden");
+        }
+      } catch (_) { connected = false; }
+      exitingWorld = false;
+      syncWorldPanel();
+    }
+    exitWorldButton.addEventListener("click", exitWorld);
+
+    function coinRadius(value) { return 10 + value * .9; }
+    function togglePanel(panel, button) {
+      const willOpen = !panel.classList.contains("open");
+      panel.classList.toggle("open", willOpen);
+      button.classList.toggle("active", willOpen);
+    }
+    rulesToggle.addEventListener("click", () => togglePanel(legend, rulesToggle));
+    boardToggle.addEventListener("click", () => togglePanel(hud, boardToggle));
+    rulesClose.addEventListener("click", () => { legend.classList.remove("open"); rulesToggle.classList.remove("active"); });
+    boardClose.addEventListener("click", () => { hud.classList.remove("open"); boardToggle.classList.remove("active"); });
+    function fitWorld() {
+      const scale = Math.min(innerWidth / WORLD.width, innerHeight / WORLD.height);
+      return { scale, ox: (innerWidth - WORLD.width * scale) / 2, oy: (innerHeight - WORLD.height * scale) / 2 };
+    }
+
+    function drawBackground(view) {
+      ctx.fillStyle = "#07111d";
+      ctx.fillRect(0, 0, innerWidth, innerHeight);
+      ctx.save(); ctx.translate(view.ox, view.oy); ctx.scale(view.scale, view.scale);
+      const grad = ctx.createLinearGradient(0, 0, WORLD.width, WORLD.height);
+      grad.addColorStop(0, "#0b1c31"); grad.addColorStop(1, "#08111f");
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+      const accent = latest.active_world?.color || "#7dd3fc";
+      ctx.strokeStyle = latest.active_world ? `${accent}66` : "rgba(125,211,252,.16)";
+      ctx.lineWidth = latest.active_world ? 5 : 2; ctx.strokeRect(1, 1, WORLD.width - 2, WORLD.height - 2);
+      ctx.fillStyle = "rgba(148,163,184,.08)";
+      for (let x = 40; x < WORLD.width; x += 40) for (let y = 40; y < WORLD.height; y += 40) ctx.fillRect(x, y, 1.2, 1.2);
+      ctx.restore();
+    }
+
+    function drawPortals(time) {
+      for (const world of latest.worlds || []) {
+        const pulse = Math.sin(time / 260 + world.id.charCodeAt(1)) * 3;
+        ctx.beginPath(); ctx.arc(world.x, world.y, world.radius + pulse + 12, 0, Math.PI * 2);
+        ctx.fillStyle = `${world.color}1f`; ctx.fill();
+        ctx.beginPath(); ctx.arc(world.x, world.y, world.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#07121e"; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = world.color; ctx.stroke();
+        ctx.beginPath(); ctx.arc(world.x, world.y, world.radius - 8, 0, Math.PI * 2);
+        ctx.setLineDash([4, 4]); ctx.lineDashOffset = time / 30; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = `${world.color}aa`; ctx.stroke(); ctx.setLineDash([]);
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = world.color; ctx.font = "800 13px -apple-system, PingFang SC, sans-serif";
+        ctx.fillText(`${world.remaining}/${world.total}`, world.x, world.y - 4);
+        ctx.font = "700 9px -apple-system, PingFang SC, sans-serif"; ctx.fillStyle = "#dbeafe";
+        ctx.fillText(world.short, world.x, world.y + 10);
+        ctx.font = "700 10px -apple-system, PingFang SC, sans-serif"; ctx.fillStyle = "rgba(226,240,255,.82)";
+        ctx.fillText(`${world.label} · ≤${world.direct_max}分直接`, world.x, world.y - world.radius - 9);
+      }
+    }
+
+    function drawCoin(coin, time) {
+      const r = coinRadius(coin.value);
+      const color = VALUE_COLORS[coin.value] || "#facc15";
+      const cat = CATEGORY[coin.category] || CATEGORY.instant;
+      const pulse = Math.sin(time / 240 + coin.id) * (coin.value >= 7 ? 3.2 : 1.6);
+
+      ctx.beginPath(); ctx.arc(coin.x, coin.y, r + 8 + pulse, 0, Math.PI * 2);
+      ctx.fillStyle = `${color}1f`; ctx.fill();
+
+      if (coin.value >= 7) {
+        ctx.save(); ctx.beginPath(); ctx.arc(coin.x, coin.y, r + 4, 0, Math.PI * 2);
+        ctx.setLineDash([5, 4]); ctx.lineDashOffset = time / 45; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = cat.color; ctx.stroke(); ctx.restore();
+      }
+
+      ctx.beginPath(); ctx.arc(coin.x, coin.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#0b1a2b"; ctx.fill();
+      ctx.lineWidth = coin.value >= 5 ? 3 : 2; ctx.strokeStyle = color; ctx.stroke();
+
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = color; ctx.font = `800 ${Math.max(10, r * .72)}px -apple-system, PingFang SC, sans-serif`;
+      ctx.fillText(coin.value, coin.x, coin.y - 2);
+
+      ctx.font = `700 ${Math.max(7, r * .42)}px -apple-system, PingFang SC, sans-serif`;
+      ctx.fillStyle = cat.color; ctx.fillText(cat.glyph, coin.x, coin.y + r * .42);
+
+      ctx.font = "700 10px -apple-system, PingFang SC, sans-serif";
+      ctx.fillStyle = "rgba(226,240,255,.78)";
+      ctx.fillText(`${coin.value}分 · ${cat.label}`, coin.x, coin.y - r - 8);
+    }
+
+    function drawTail(p) {
+      const tail = p.tail || [];
+      if (!tail.length) return;
+
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      for (const seg of tail) ctx.lineTo(seg.x, seg.y);
+      ctx.setLineDash([7, 6]);
+      ctx.lineWidth = Math.max(3, p.radius * .38);
+      ctx.strokeStyle = `${p.color}42`;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      tail.forEach((seg, index) => {
+        const radius = seg.radius || p.radius * .48;
+        const alpha = Math.max(.06, .22 - (index / tail.length) * .16);
+        ctx.globalAlpha = alpha;
+        ctx.beginPath(); ctx.arc(seg.x, seg.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color; ctx.fill();
+        ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+        ctx.strokeStyle = p.color; ctx.stroke(); ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    function render() {
+      const view = fitWorld();
+      drawBackground(view);
+      ctx.save(); ctx.translate(view.ox, view.oy); ctx.scale(view.scale, view.scale);
+      if (!latest.active_world) drawPortals(performance.now());
+      for (const coin of latest.coins || []) drawCoin(coin, performance.now());
+
+      for (const p of renderedPlayers.values()) {
+        const target = (latest.players || []).find(sp => sp.id === p.id);
+        if (target) { p.x += (target.x - p.x) * .22; p.y += (target.y - p.y) * .22; }
+        const radius = p.radius || 14;
+        drawTail(p);
+        ctx.beginPath(); ctx.arc(p.x, p.y, radius + 12, 0, Math.PI * 2);
+        ctx.fillStyle = p.id === playerId ? `${p.color}22` : "rgba(255,255,255,.035)"; ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color; ctx.fill(); ctx.lineWidth = 3;
+        ctx.strokeStyle = p.id === playerId ? "#fff" : "rgba(255,255,255,.7)"; ctx.stroke();
+        ctx.font = "700 13px -apple-system, PingFang SC, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#dbeafe"; ctx.fillText(`${p.name} · ${p.score}分`, p.x, p.y - radius - 12);
+        ctx.fillStyle = "#9fb6cc"; ctx.font = "600 10px -apple-system, PingFang SC, sans-serif";
+        ctx.fillText(`速度 ${p.speed} · 大小 ${Math.round((p.size || 1) * 100)}% · 尾长 ${(p.tailLength || 0).toFixed(1)}`, p.x, p.y + radius + 20);
+      }
+      ctx.restore();
+
+      if (!connected) {
+        ctx.fillStyle = "rgba(248,113,113,.85)"; ctx.font = "600 13px -apple-system, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("连接断开，正在重试…", innerWidth / 2, 28);
+      }
+
+      const sorted = [...(latest.players || [])].sort((a, b) => b.speed - a.speed || b.score - a.score || b.eaten - a.eaten || a.id - b.id);
+      board.innerHTML = sorted.slice(0, 8).map((p, index) => `
+        <li class="${p.id === playerId ? "me" : ""}">
+          <span class="rank">${index + 1}</span>
+          <span class="name">${escapeHtml(p.name)}</span>
+          <span class="speed">${p.speed}</span>
+          <span class="metrics">速度 · ${p.score}分 · 吃了${p.eaten || 0}个 · 尾长${(p.tailLength || 0).toFixed(1)} · 🏅${(p.achievements || []).length}</span>
+        </li>
+      `).join("");
+      const winner = sorted[0];
+      connection.textContent = winner && winner.score >= 50 ? `${winner.name} wins!` : (connected ? "connected" : "offline");
+      requestAnimationFrame(render);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    }
+
+    function syncAchievements() {
+      if (!latest.achievementDefinitions || !achievementsList) return;
+      const me = (latest.players || []).find(p => p.id === playerId);
+      const unlocked = new Set(me?.achievements || []);
+      achievementsList.innerHTML = latest.achievementDefinitions.map(item => `
+        <div class="achievement ${unlocked.has(item.key) ? "unlocked" : ""}">
+          <span class="icon">${item.icon}</span>
+          <span class="text"><b>${item.title}</b><small>${item.description}</small></span>
+        </div>
+      `).join("");
+    }
+
+    addEventListener("keydown", event => {
+      if (!latest.quiz && overlay.classList.contains("hidden")) {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
+        keys.add(event.code);
+      }
+      if (latest.quiz && /^Digit[1-4]$/.test(event.code)) {
+        const index = Number(event.code.slice(5)) - 1;
+        choicesEl.querySelectorAll("button")[index]?.click();
+      }
+      if (latest.quiz && event.code === "KeyQ") skipQuestion();
+      if (latest.active_world && event.code === "KeyX") exitWorld();
+    });
+    addEventListener("keyup", event => keys.delete(event.code));
+    addEventListener("blur", () => keys.clear());
+    joinButton.addEventListener("click", () => join(nameInput.value));
+    nameInput.addEventListener("keydown", event => { if (event.key === "Enter") join(nameInput.value); });
+    const NAME_HEADS = ["闪电", "旋风", "彩虹", "开心", "无敌", "勇敢", "飞毛腿", "神秘", "暖暖", "超级", "小小", "威武"];
+    const NAME_TAILS = ["小老虎", "小飞龙", "猎豹", "小熊猫", "企鹅", "小狮子", "海豚", "小飞侠", "星星", "小恐龙", "奥特曼", "小蜜蜂"];
+    function randomName() {
+      const head = NAME_HEADS[Math.floor(Math.random() * NAME_HEADS.length)];
+      const tail = NAME_TAILS[Math.floor(Math.random() * NAME_TAILS.length)];
+      const fixedTail = head.endsWith("小") && tail.startsWith("小") ? tail.slice(1) : tail;
+      return (head + fixedTail).slice(0, 14);
+    }
+    nameInput.value = randomName();
+    diceButton.addEventListener("click", () => { nameInput.value = randomName(); nameInput.focus(); });
+    joinButton.addEventListener("click", () => { if (!nameInput.value.trim()) nameInput.value = randomName(); }, true);
+    addEventListener("beforeunload", () => {
+      if (playerId) navigator.sendBeacon("/leave", new Blob([JSON.stringify({ id: playerId })], { type: "application/json" }));
+    });
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>看AI图猜古诗</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+  <div class="app">
+    <header class="hud">
+      <div class="hud-item">得分 <strong id="score">0</strong></div>
+      <div class="hud-item combo" id="comboWrap">连击 <strong id="combo">0</strong>🔥</div>
+      <div class="hud-item timer" id="timerWrap">⏳ <strong id="timer">15</strong>s</div>
+      <div class="hud-item hidden" id="pk-mode">🎯 PK · <span id="pk-seed">0</span></div>
+      <div class="hud-item">第 <strong id="progress">1</strong>/<span id="total">10</span> 关</div>
+    </header>
+
+    <main id="stage">
+      <h1 class="game-title">🖼️ 看AI图，猜古诗</h1>
+      <p class="subtitle">仔细观察插画，选出正确的诗句！</p>
+      <div class="grade-picker">
+        <p class="grade-label">📚 选择年级范围</p>
+        <div class="grade-options">
+          <button class="grade-btn active" data-grade="0" type="button">全部</button>
+          <button class="grade-btn" data-grade="1" type="button">一年级</button>
+          <button class="grade-btn" data-grade="2" type="button">二年级</button>
+          <button class="grade-btn" data-grade="3" type="button">三年级</button>
+          <button class="grade-btn" data-grade="4" type="button">四年级</button>
+          <button class="grade-btn" data-grade="5" type="button">五年级</button>
+          <button class="grade-btn" data-grade="6" type="button">六年级</button>
+        </div>
+      </div>
+      <button id="startBtn" class="btn primary">开始游戏</button>
+    </main>
+
+    <div id="quiz" class="quiz hidden">
+      <div class="pic-frame">
+        <img id="pic" alt="题目插画" />
+        <div id="picFallback" class="pic-fallback hidden"></div>
+      </div>
+      <div id="options" class="options"></div>
+      <div id="feedback" class="feedback hidden"></div>
+      <div class="quiz-actions">
+        <button id="restartBtn" class="btn ghost">重新开始</button>
+      </div>
+    </div>
+
+    <div id="result" class="result hidden">
+      <h2>🎉 全部完成！</h2>
+      <p id="resultText"></p>
+      <p id="resultStars" class="stars"></p>
+      <button id="resultRestart" class="btn primary">再玩一次</button>
+      <button id="resultChangeGrade" class="btn ghost">换个年级</button>
+    </div>
+  </div>
+
+  <script src="data/questions.js"></script>
+  <script src="../arena/arena.js"></script>
+  <script src="../solo-titles/titles.js" data-title-key="poem"></script>
+<script src="game.js"></script>
+</body>
+</html>

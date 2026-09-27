@@ -1,0 +1,97 @@
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(160deg,#1a1a2e,#16213e);
+  color:#eee; min-height:100vh;
+}
+.app { max-width:560px; margin:0 auto; padding:20px 16px 40px; }
+header { text-align:center; margin-bottom:20px; }
+h1 { font-size:1.8rem; }
+.subtitle { color:#9aa; margin:6px 0 10px; }
+.link-btn { background:none; border:none; color:#7cc; cursor:pointer; font-size:.95rem; text-decoration:underline; }
+
+.card {
+  background:rgba(255,255,255,.06); border-radius:14px;
+  padding:22px 18px; margin-bottom:16px;
+}
+.card h2 { margin-bottom:12px; font-size:1.2rem; }
+.card p, .card li { line-height:1.6; }
+ol,ul { padding-left:1.3em; }
+
+label { display:block; margin:12px 0 4px; color:#ccd; }
+input[type=text], input[type=number], select {
+  width:100%; padding:10px 12px; border-radius:8px; border:1px solid #445;
+  background:#0e1628; color:#eee; font-size:1rem;
+}
+input:focus { outline:2px solid #5af; }
+
+.btn {
+  display:inline-block; width:100%; margin-top:16px;
+  padding:13px; border:none; border-radius:10px;
+  background:#3b82f6; color:#fff; font-size:1.05rem;
+  cursor:pointer; transition:background .15s;
+}
+.btn:hover { background:#2563eb; }
+.btn.secondary { background:#334155; }
+.btn.secondary:hover { background:#475569; }
+.btn.danger { background:#dc2626; }
+.btn.small { width:auto; padding:8px 14px; font-size:.9rem; margin:0; }
+
+.player-row { display:flex; gap:8px; margin-bottom:8px; }
+.player-row input { flex:1; }
+.player-row .btn { width:auto; margin:0; padding:8px 12px; }
+
+.name-list { margin:10px 0; }
+.name-list span {
+  display:inline-block; background:rgba(96,165,250,.18);
+  padding:5px 12px; border-radius:16px; margin:4px 4px 0 0;
+}
+
+.pass-box { text-align:center; }
+.pass-big { font-size:2rem; margin:20px 0; font-weight:700; }
+.identity-card {
+  margin:24px auto; padding:34px 20px; border-radius:16px;
+  max-width:320px; font-size:1.35rem; font-weight:700;
+}
+.identity-card.civilian { background:rgba(34,197,94,.15); border:2px solid #22c55e; }
+.identity-card.undercover { background:rgba(239,68,68,.15); border:2px solid #ef4444; }
+.identity-card.special { background:rgba(168,85,247,.18); border:2px solid #a855f7; }
+.identity-card .role { display:block; font-size:.85rem; color:#9aa; font-weight:400; margin-bottom:8px; }
+
+.count-badge {
+  display:inline-block; background:#334155; padding:4px 14px;
+  border-radius:14px; font-size:.9rem; margin-bottom:10px;
+}
+
+.vote-list button {
+  display:block; width:100%; margin:8px 0; padding:12px;
+  border-radius:10px; border:1px solid #445;
+  background:#1e293b; color:#eee; font-size:1rem; cursor:pointer; text-align:left;
+}
+.vote-list button:hover { background:#334155; }
+.vote-list button.voted { border-color:#3b82f6; background:#1d3a6e; }
+
+.result-banner {
+  text-align:center; font-size:1.5rem; font-weight:700;
+  padding:20px; border-radius:14px; margin-bottom:16px;
+}
+.result-banner.civilian-win { background:rgba(34,197,94,.18); color:#4ade80; }
+.result-banner.undercover-win { background:rgba(239,68,68,.18); color:#f87171; }
+.result-banner.continue { background:rgba(59,130,246,.18); color:#93c5fd; }
+
+.id-grid { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.id-grid .chip {
+  padding:6px 12px; border-radius:8px; font-size:.9rem;
+  background:rgba(255,255,255,.08);
+}
+.chip.undercover { background:rgba(239,68,68,.25); }
+.chip.special { background:rgba(168,85,247,.25); }
+
+.rules h3 { margin:14px 0 6px; color:#93c5fd; }
+.rules p, .rules li { font-size:.95rem; color:#ccd; }
+
+@media (max-width:480px) {
+  .app { padding:14px 10px 30px; }
+  h1 { font-size:1.5rem; }
+  .card { padding:16px 14px; }
+}

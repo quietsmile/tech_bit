@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>炫酷抽奖塔防</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+    .match-box { margin-top: 16px; padding: 12px; border: 1px dashed rgba(148,163,184,.4); border-radius: 12px; text-align: center; }
+    .match-title { font-size: 13px; font-weight: 800; color: #7dd3fc; margin-bottom: 8px; }
+    .match-row { display: flex; gap: 8px; justify-content: center; }
+    .match-row input { width: 90px; padding: 8px; border-radius: 8px; border: 1px solid #3a4256; background: #10131b; color: #eee; text-align: center; letter-spacing: 3px; }
+    .match-row button { padding: 8px 14px; border-radius: 8px; border: none; background: #38bdf8; color: #04121d; font-weight: 800; cursor: pointer; }
+    #matchStatus { min-height: 16px; margin-top: 6px; font-size: 12px; color: #86efac; }
+    #matchBoard {
+      position: fixed; top: 12px; right: 12px; z-index: 40; min-width: 190px;
+      background: rgba(9,20,34,.92); border: 1px solid rgba(125,211,252,.35); border-radius: 12px;
+      padding: 10px 12px; font-size: 12px; color: #dbeafe; display: none;
+    }
+    #matchBoard b { color: #7dd3fc; }
+    #matchBoard .mrow { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  </style>
+</head>
+<body>
+<a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+<main>
+  <header>
+    <h1>🎁 抽奖塔防大作战</h1>
+    <p>抽装备 · 卖多余 · 升奖池 · 打野怪 · 3分钟决出“野怪终结者”</p>
+  </header>
+
+  <section id="setup" class="card">
+    <h2>开赛前设置</h2>
+    <div class="setup-grid">
+      <label>玩家人数
+        <select id="playerCount">
+          <option value="1">1 人（练习）</option>
+          <option value="2" selected>2 人</option>
+          <option value="3">3 人</option>
+          <option value="4">4 人</option>
+        </select>
+      </label>
+      <label>对局时长（秒）
+        <input id="durationInput" type="number" min="60" max="600" step="30" value="180">
+      </label>
+    </div>
+    <div id="playerSetup"></div>
+    <button id="startBtn" class="primary">开始战斗</button>
+    <div class="match-box">
+      <div class="match-title">🌐 联机比赛（各守各的 · 比分数 · 2–6 人）</div>
+      <div id="matchStatus">正在进入联机比赛房间…</div>
+    </div>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="battle-top card">
+      <div>⏱ 剩余 <b id="timeLeft">180</b>s</div>
+      <div>🌊 第 <b id="waveNum">0</b> 波</div>
+      <div>🎯 总击杀 <b id="totalKills">0</b></div>
+      <div>🏃 逃脱 <b id="escaped">0</b></div>
+      <button id="pauseBtn" class="small">暂停</button>
+    </div>
+
+    <div class="stage">
+      <div class="left-panel card">
+        <div class="player-tabs" id="playerTabs"></div>
+        <div class="control-card">
+          <div id="controlledName" class="controlled-name"></div>
+          <div class="resource">💰 <b id="coins">0</b></div>
+          <div class="resource">🎰 奖池等级 <b id="level">1</b>/10</div>
+          <div class="resource">⚔️ 出战 <b id="unitCount">0</b></div>
+          <div class="resource">🏆 击杀 <b id="kills">0</b></div>
+          <div class="resource">💥 伤害 <b id="damage">0</b></div>
+          <button id="spinBtn" class="primary">🎰 抽奖（10金）</button>
+          <button id="tenBtn" class="primary ten-pull">🌟 10连抽（100金）</button>
+          <button id="upgradeBtn">⬆️ 升级奖池</button>
+          <div class="placement-hint">新抽到的装备会自动放置到战场；之后仍可点「移动」调整位置，出战数量不设上限。</div>
+          <div class="inventory-title">背包</div>
+          <div id="inventory" class="inventory"></div>
+        </div>
+        <div id="tenResult" class="ten-result hidden">
+          <div class="ten-result-title">🌟 10连抽结果</div>
+          <div id="tenList" class="ten-list"></div>
+          <button id="tenClose" class="ghost">收起</button>
+        </div>
+      </div>
+
+      <div class="battle-wrap card">
+        <canvas id="battleCanvas" width="960" height="540"></canvas>
+        <div id="battleMsg"></div>
+      </div>
+
+      <div class="right-panel">
+        <div class="wheel-wrap card">
+          <canvas id="wheelCanvas" width="380" height="380"></canvas>
+          <div class="wheel-title">当前奖池概率</div>
+          <div id="probabilityLegend" class="probability-legend"></div>
+        </div>
+        <div class="card ranking-card">
+          <h3>实时排名</h3>
+          <ol id="ranking"></ol>
+        </div>
+      </div>
+    </div>
+
+    <section class="card help">
+      <h3>玩法</h3>
+      <p>点击上方玩家标签切换要操作的人。AI 会自动抽奖和部署。抽到的士兵/武器都会自动放置，出战数量不设上限；也可以卖掉不需要的装备，再升级奖池。</p>
+    </section>
+  </section>
+
+  <div id="matchBoard"></div>
+  <section id="result" class="card hidden">
+    <h2>🏁 战斗结束</h2>
+    <div id="champion"></div>
+    <ol id="finalRanking"></ol>
+    <button id="restartBtn" class="primary">再来一局</button>
+    <button id="resultHome" class="secondary">返回游戏中心</button>
+  </section>
+</main>
+
+<script src="js/config.js?v=2"></script>
+<script src="js/audio.js?v=2"></script>
+<script src="js/wheel.js?v=2"></script>
+<script src="js/battle.js?v=2"></script>
+<script src="js/game.js?v=tenpull-1"></script>
+  <script src="js/relay.js?v=1"></script>
+</body>
+</html>

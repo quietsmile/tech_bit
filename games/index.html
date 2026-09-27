@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>双 Mac 游戏中心</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; color:#e6f2ff; background:radial-gradient(circle at 20% 10%, #1c3550, #07101d 58%); }
+    main { max-width:1120px; margin:0 auto; padding:48px 22px 64px; }
+    header { text-align:center; margin-bottom:34px; }
+    h1 { font-size:clamp(34px,6vw,64px); margin:0 0 8px; letter-spacing:.08em;
+      background:linear-gradient(120deg,#4facfe,#00f2fe,#ffd200); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .subtitle { color:#a8c1d8; margin:0; font-size:15px; }
+    .group { margin-bottom:42px; }
+    .group:last-child { margin-bottom:0; }
+    .group-head { margin:0 0 18px; }
+    .group-kicker { display:inline-block; margin-bottom:8px; padding:6px 11px; border-radius:999px;
+      color:#04131f; font-size:12px; font-weight:900; background:var(--accent,#7dd3fc); }
+    .group-title { margin:0 0 6px; font-size:clamp(24px,4vw,34px); letter-spacing:.04em; }
+    .group-desc { margin:0; color:#8fa9bf; font-size:13px; }
+    .solo-banner { display:flex; align-items:center; gap:16px; margin-bottom:18px; padding:18px 22px; border-radius:20px;
+      text-decoration:none; border:1px solid rgba(255,215,0,.35); background:linear-gradient(120deg, rgba(80,52,10,.5), rgba(30,20,50,.85));
+      box-shadow:0 18px 50px rgba(0,0,0,.25); transition:.2s; }
+    .solo-banner:hover { transform:translateY(-2px); border-color:rgba(255,215,0,.6); }
+    .solo-banner-icon { font-size:34px; }
+    .solo-banner-text { flex:1; }
+    .solo-banner-text b { display:block; color:#ffd700; font-size:18px; margin-bottom:3px; }
+    .solo-banner-text small { color:#b9a6c9; font-size:12.5px; }
+    .solo-banner-cta { color:#05131f; font-weight:800; font-size:13px; padding:9px 14px; border-radius:999px;
+      background:linear-gradient(120deg,#ffd700,#ffb347); white-space:nowrap; }
+    @media(max-width:600px){ .solo-banner{flex-wrap:wrap} .solo-banner-cta{display:none} }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
+    .game { position:relative; overflow:hidden; border:1px solid rgba(148,184,220,.16); border-radius:24px; padding:24px;
+      background:linear-gradient(145deg, rgba(20,40,60,.92), rgba(9,20,34,.88)); box-shadow:0 24px 70px rgba(0,0,0,.25); transition:.22s; }
+    .game:hover { transform:translateY(-4px); border-color:rgba(125,211,252,.48); box-shadow:0 30px 80px rgba(0,0,0,.32); }
+    .game::after { content:""; position:absolute; inset:auto -30px -55px auto; width:135px; height:135px; border-radius:50%;
+      background:var(--accent); opacity:.13; filter:blur(18px); }
+    .tag { display:inline-block; margin-bottom:14px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:700;
+      color:#04131f; background:var(--accent); }
+    h2 { margin:0 0 8px; font-size:24px; }
+    p { min-height:58px; color:#a4bccf; font-size:13px; line-height:1.65; margin:0 0 18px; }
+    .meta { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:20px; }
+    .meta span { font-size:11px; color:#9fb6cc; padding:5px 8px; border:1px solid rgba(148,184,220,.18); border-radius:8px; }
+    a { display:inline-flex; align-items:center; justify-content:center; padding:12px 18px; border-radius:13px; text-decoration:none;
+      font-weight:800; color:#051520; background:linear-gradient(120deg,#fff,#d9f4ff); box-shadow:0 10px 24px rgba(0,0,0,.18); }
+    .note { margin-top:30px; text-align:center; color:#7c94aa; font-size:12px; line-height:1.8; }
+    @media(max-width:600px){ main{padding:32px 15px 48px} p{min-height:0} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>双 Mac 游戏中心</h1>
+    <p class="subtitle">所有可玩游戏汇总 · 局域网可直接打开 · 持续更新</p>
+  </header>
+  <section class="group" style="--accent:#7dd3fc">
+    <div class="group-head">
+      <span class="group-kicker">第一组</span>
+      <h2 class="group-title">闯关组 · 单人</h2>
+      <p class="group-desc">一个人就能挑战的闯关游戏，通关收集专属称号。</p>
+    </div>
+    <a class="solo-banner" href="./solo-titles/index.html">
+      <span class="solo-banner-icon">🏅</span>
+      <span class="solo-banner-text">
+        <b>单人闯关 · 称号墙</b>
+        <small>通关闯关组 6 个游戏收集专属称号 · 已收集 <span id="solo-earned-count">0</span>/6</small>
+      </span>
+      <span class="solo-banner-cta">查看称号墙 →</span>
+    </a>
+    <div class="grid">
+      <article class="game" style="--accent:#a855f7">
+        <span class="tag">单人</span>
+        <h2>看AI图猜古诗</h2>
+        <p>AI 画出古诗里的画面，小学生从四个诗句中选出正确答案。支持计分、连击、倒计时和趣味讲解。</p>
+        <div class="meta"><span>单人挑战</span><span>古诗启蒙</span><span>AI插画</span></div>
+        <a href="./poem-guess/index.html?mode=solo">开始答题</a>
+      </article>
+
+      <article class="game" style="--accent:#14b8a6">
+        <span class="tag">单人</span>
+        <h2>Emoji 猜趣味句子</h2>
+        <p>自动从第 1 关开始，从 1 个 Emoji 逐渐挑战到 20 个 Emoji。答对进入下一关，看看你能闯到多远。</p>
+        <div class="meta"><span>单人挑战</span><span>20关</span><span>连击计分</span></div>
+        <a href="./emoji-sentence-guess/index.html?mode=solo">开始猜句</a>
+      </article>
+
+      <article class="game" style="--accent:#06b6d4">
+        <span class="tag">单人</span>
+        <h2>给机器人指路</h2>
+        <p>编程启蒙：用「前进、左转、右转」给机器人排指令，中年级解锁循环，高年级解锁条件判断。撞墙会失败，宝箱有加分！</p>
+        <div class="meta"><span>单人</span><span>编程思维</span><span>分年级关卡</span></div>
+        <a href="./robot-path/index.html?mode=solo">开始闯关</a>
+      </article>
+
+      <article class="game" style="--accent:#f5576c">
+        <span class="tag">单人</span>
+        <h2>颜色大挑战</h2>
+        <p>一堆色块里藏着一个「不一样」的它。8 关眼力挑战：从 2×2 开始格子越来越多，颜色误差越来越小，看你能闯到第几关！</p>
+        <div class="meta"><span>单人挑战</span><span>眼力</span><span>8 关闯关</span></div>
+        <a href="./color-challenge/index.html?mode=solo">开始挑战</a>
+      </article>
+
+      <article class="game" style="--accent:#38bdf8">
+        <span class="tag">单人</span>
+        <h2>图像找不同</h2>
+        <p>左右两张卡通图里有 3 处不同，一关 60 秒。独自挑战也紧张刺激，找齐差异就能拿高分。</p>
+        <div class="meta"><span>单人挑战</span><span>观察力</span><span>4 关限时</span></div>
+        <a href="./spot-difference/index.html?mode=solo">开始挑战</a>
+      </article>
+
+      <article class="game" style="--accent:#34d399">
+        <span class="tag">单人</span>
+        <h2>猜时间闯关</h2>
+        <p>三关挑战：猜 10 秒（可设置）、最快点击、篮球落地瞬间按键，综合成绩看谁最准。</p>
+        <div class="meta"><span>单人挑战</span><span>三关挑战</span><span>综合成绩</span></div>
+        <a href="./time-guess/index.html?mode=solo">开始挑战</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="group" style="--accent:#f97316">
+    <div class="group-head">
+      <span class="group-kicker">第二组</span>
+      <h2 class="group-title">对战组</h2>
+      <p class="group-desc">象棋、五子棋同屏对弈：人机挑战，或两个孩子面对面下。</p>
+    </div>
+    <div class="grid">
+      <article class="game" style="--accent:#f97316">
+        <span class="tag">单机</span>
+        <h2>中国象棋</h2>
+        <p>红黑对弈，支持人机挑战和本地双人。规则完整，胜利可得「象棋小将军」称号。</p>
+        <div class="meta"><span>单人/双人</span><span>棋类</span><span>称号</span></div>
+        <a href="./chinese-chess/index.html">开始对局</a>
+      </article>
+
+      <article class="game" style="--accent:#a855f7">
+        <span class="tag">单机</span>
+        <h2>五子棋</h2>
+        <p>15×15 棋盘对弈，支持人机挑战和本地双人。自动识别五连，胜利可得「棋盘小诸葛」称号。</p>
+        <div class="meta"><span>单人/双人</span><span>策略</span><span>称号</span></div>
+        <a href="./gomoku/index.html">开始对局</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="group" style="--accent:#facc15">
+    <div class="group-head">
+      <span class="group-kicker">第三组</span>
+      <h2 class="group-title">体验组</h2>
+      <p class="group-desc">随时打开轻松体验，包括街机、竞速和创意玩法。</p>
+    </div>
+    <div class="grid">
+      <article class="game" style="--accent:#00d1ff">
+        <span class="tag">联机</span>
+        <h2>抓人游戏</h2>
+        <p>答题加速联机游戏。光点按难度分级，答对可加速，还能进入小世界挑战直接吃的低分点。</p>
+        <div class="meta"><span>双人联机</span><span>答题</span><span>实时对战</span></div>
+        <a href="http://127.0.0.1:8766/" data-local-port="8766">进入游戏</a>
+      </article>
+
+      <article class="game" style="--accent:#22c55e">
+        <span class="tag">已上线</span>
+        <h2>贪吃蛇</h2>
+        <p>经典街机玩法。方向键或触控按钮操作，分数越高速度越快；还支持双机联机：一人一条蛇同场竞技！</p>
+        <div class="meta"><span>单人/联机</span><span>双蛇对战</span><span>最高分</span></div>
+        <a href="./snake/index.html">开始游戏</a>
+      </article>
+
+      <article class="game" style="--accent:#f43f5e">
+        <span class="tag">联机</span>
+        <h2>迷宫竞速</h2>
+        <p>双人同键盘比拼反应和路线选择。吃了加速鞋、穿墙幽灵、减速陷阱和金币，胜负随时反转。</p>
+        <div class="meta"><span>双人竞速</span><span>随机迷宫</span><span>道具战斗</span></div>
+        <a href="http://127.0.0.1:8400/" data-local-port="8400">开始在线竞速</a>
+      </article>
+
+      <article class="game" style="--accent:#f59e0b">
+        <span class="tag">已上线</span>
+        <h2>抽奖塔防</h2>
+        <p>旋转转盘抽士兵和武器，卖多余装备、升级奖池，180 秒内比拼打野怪的击杀数和总伤害。</p>
+        <div class="meta"><span>1–4人</span><span>抽奖塔防</span><span>可调时长</span></div>
+        <a href="./lottery-tower-defense/index.html">开始挑战</a>
+      </article>
+    </div>
+  </section>
+  <p class="note">
+    两台 Mac 连接同一个热点即可游玩。<br>
+    联机游戏地址：<code>http://172.20.10.12:8765</code>
+    游戏中心地址：<code>http://172.20.10.11:8100</code>
+  </p>
+</main>
+  <script>
+    document.querySelectorAll("[data-local-port]").forEach(function (link) {
+      link.href = location.protocol + "//" + location.hostname + ":" + link.dataset.localPort + "/";
+    });
+    (function () {
+      function updateCount() {
+        try {
+          var data = JSON.parse(localStorage.getItem("techbitSoloTitles") || "{}");
+          var keys = ["spot", "emoji", "time", "robot", "color", "poem"];
+          var n = 0;
+          keys.forEach(function (k) { if (data[k]) n++; });
+          var elc = document.getElementById("solo-earned-count");
+          if (elc) elc.textContent = n;
+        } catch (e) { /* 忽略 */ }
+      }
+      updateCount();
+      window.addEventListener("storage", updateCount);
+    })();
+  </script>
+</body>
+</html>

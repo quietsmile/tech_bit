@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中国象棋</title>
+<style>
+    .home-button {
+      position: fixed; top: 14px; left: 14px; z-index: 30;
+      padding: 8px 13px; border-radius: 999px; text-decoration: none;
+      background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28);
+      font-size: 12px; font-weight: 700; backdrop-filter: blur(8px);
+    }
+    .home-button:hover { border-color: #7dd3fc; color: #fff; }
+</style>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+  <h1>中国象棋</h1>
+  <div id="start-screen" class="start-screen">
+    <div class="start-card">
+      <h2>选择模式</h2>
+      <button id="mode-ai" class="primary">单人挑战（人机）</button>
+      <button id="mode-pvp">双人对战</button>
+      <div id="difficulty-row" class="difficulty-row hidden">
+        <label>难度：
+          <select id="difficulty">
+            <option value="easy">简单</option>
+            <option value="normal" selected>普通</option>
+            <option value="hard">困难</option>
+          </select>
+        </label>
+        <button id="start-ai" class="primary">开始挑战</button>
+      </div>
+    </div>
+  </div>
+  <div id="honor-screen" class="start-screen hidden">
+    <div class="start-card">
+      <h2 id="honor-title">对局结束</h2>
+      <p id="honor-text"></p>
+      <div id="badge-box" class="badge-box hidden">
+        <span class="badge">🏅 象棋小将军</span>
+        <p class="badge-note">成就徽章已保存</p>
+      </div>
+      <button id="honor-back" class="primary">返回选择</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button id="restart">重新开始</button>
+    <button id="undo">悔棋</button>
+    <div id="status">红方行棋</div>
+  </div>
+  <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+  <script src="rules.js"></script>
+  <script src="ai.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

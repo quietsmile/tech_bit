@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emoji 猜趣味句子</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏大厅</a>
+  <div class="container">
+    <!-- 开始界面 -->
+    <main id="start-screen" class="screen">
+      <div class="start-emoji">🤔🎭✨</div>
+      <h1>Emoji 猜趣味句子</h1>
+      <p class="intro">看 Emoji，猜中文句子！<br>自动闯关：题目从 1 个 Emoji 到 10 个 Emoji，越后面越长越难。</p>
+      <ul class="rules">
+        <li>🧩 共 <b>10</b> 关：第 1 关 1 个 Emoji，第 10 关 10 个 Emoji</li>
+        <li>🎲 每次开始都会随机生成关卡题目</li>
+        <li>⏱️ 每关 <b>1</b> 题，每题限时 <b>20</b> 秒</li>
+        <li>✅ 答对得分：基础分 + 连击奖励 + 速度奖励</li>
+        <li>🏁 答对进入下一关；答错或超时结束挑战</li>
+      </ul>
+      <button id="start-btn" class="btn btn-primary btn-big">🚀 从第 1 关开始</button>
+    </main>
+
+    <!-- 答题界面 -->
+    <div id="quiz-screen" class="hidden">
+      <header>
+        <div class="header-top">
+          <h1>🤔 Emoji 猜趣味句子</h1>
+          <button id="sound-toggle" class="icon-btn" title="切换音效">🔊</button>
+        </div>
+        <div class="hud">
+          <span class="hud-chip">关卡 <b id="level-value">1</b></span>
+          <span class="hud-chip">得分 <b id="score">0</b></span>
+          <span class="hud-chip">连击 <b id="combo">x0</b></span>
+          <span class="hud-chip timer-chip" id="timer-chip">⏱ <b id="timer">20</b>s</span>
+        </div>
+      </header>
+      <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <main class="screen">
+        <div class="q-meta">
+          <span id="q-index">第 1 / 10 关</span>
+          <span class="category-tag" id="q-category">第 1 关</span>
+        </div>
+        <div class="emoji-display" id="emoji-display"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="controls">
+          <button id="next-btn" class="btn btn-primary" disabled>下一关 ⏭</button>
+        </div>
+      </main>
+    </div>
+
+    <!-- 结果界面 -->
+    <main id="result-screen" class="screen hidden">
+      <div id="rating-icon" class="rating-icon">🏆</div>
+      <h2 id="rating-title">Emoji 侦探大师</h2>
+      <p id="result-level" class="result-level">到达第 1 关</p>
+      <p id="rating-desc" class="rating-desc"></p>
+      <div class="stats">
+        <div class="stat"><span class="stat-num" id="stat-score">0</span><span class="stat-label">总分</span></div>
+        <div class="stat"><span class="stat-num" id="stat-max-combo">0</span><span class="stat-label">最高连击</span></div>
+        <div class="stat"><span class="stat-num" id="stat-correct">0</span><span class="stat-label">答对</span></div>
+        <div class="stat"><span class="stat-num" id="stat-wrong">0</span><span class="stat-label">答错</span></div>
+        <div class="stat"><span class="stat-num" id="stat-skip">0</span><span class="stat-label">跳过</span></div>
+      </div>
+      <div class="result-actions">
+        <button id="back-levels-btn" class="btn btn-secondary btn-big">📚 回到首页</button>
+        <button id="restart-btn" class="btn btn-primary btn-big">🔄 从第 1 关重开</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="questions.js"></script>
+  <script src="../arena/arena.js"></script>
+  <script src="../solo-titles/titles.js" data-title-key="emoji"></script>
+<script src="game.js"></script>
+</body>
+</html>

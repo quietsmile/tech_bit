@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>身份推理 · 谁是卧底</title>
+<style>
+    .home-button {
+      position: fixed; top: 14px; right: 14px; z-index: 30;
+      padding: 8px 13px; border-radius: 999px; text-decoration: none;
+      background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28);
+      font-size: 12px; font-weight: 700; backdrop-filter: blur(8px);
+    }
+    .home-button:hover { border-color: #7dd3fc; color: #fff; }
+</style>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+<div class="app">
+  <header>
+    <h1>🎭 身份推理</h1>
+    <p class="subtitle">同屏传递 · 谁是卧底</p>
+    <button id="btn-rules-top" class="link-btn">📖 规则说明</button>
+  </header>
+
+  <main id="main"></main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-body" id="modal-body"></div>
+      <button id="modal-close" class="btn">知道了</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

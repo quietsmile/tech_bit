@@ -1,0 +1,481 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 16px 16px;
+  color: #333;
+}
+
+.home-button {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #5b6ee1;
+  border: 1px solid rgba(91, 110, 225, 0.28);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.home-button:hover {
+  transform: translateY(-1px);
+  color: #4353c4;
+  border-color: rgba(91, 110, 225, 0.5);
+}
+
+.container {
+  width: 100%;
+  max-width: 640px;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.screen {
+  padding: 28px 24px 32px;
+}
+
+/* ===== 开始界面 ===== */
+#start-screen {
+  text-align: center;
+}
+
+.start-emoji {
+  font-size: 3rem;
+  letter-spacing: 6px;
+  margin-bottom: 12px;
+}
+
+#start-screen h1,
+#result-screen h2 {
+  margin-bottom: 10px;
+}
+
+.intro {
+  color: #666;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.rules {
+  list-style: none;
+  text-align: left;
+  background: #f5f6ff;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin: 0 auto 22px;
+  max-width: 420px;
+  color: #555;
+  line-height: 2;
+  font-size: 0.95rem;
+}
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.level-btn {
+  border: 2px solid #e0e4f5;
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 6px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.level-btn b {
+  display: block;
+  font-size: 1.25rem;
+  color: #5b6ee1;
+}
+
+.level-btn span {
+  display: block;
+  margin-top: 3px;
+  font-size: .68rem;
+  color: #777;
+  white-space: nowrap;
+}
+
+.level-btn:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, .18);
+}
+
+.random-level {
+  width: 100%;
+}
+
+/* ===== 顶部 HUD ===== */
+header {
+  background: linear-gradient(135deg, #5b6ee1, #8e54e9);
+  color: #fff;
+  padding: 18px 24px 14px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 1.25rem;
+}
+
+.icon-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.hud {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.hud-chip {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.9rem;
+}
+
+.timer-chip.danger {
+  background: #ff5252;
+  animation: pulse 0.8s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+#combo.bump {
+  display: inline-block;
+  animation: comboPop 0.4s;
+}
+
+@keyframes comboPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.6); color: #ffe066; }
+  100% { transform: scale(1); }
+}
+
+/* ===== 进度条 ===== */
+.progress-wrap {
+  height: 10px;
+  background: #e8eaf6;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #43e97b, #38f9d7);
+  transition: width 0.4s ease;
+  border-radius: 0 999px 999px 0;
+}
+
+/* ===== 题目区 ===== */
+.q-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+.category-tag {
+  background: #fff3e0;
+  color: #ef6c00;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.emoji-display {
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  text-align: center;
+  letter-spacing: 8px;
+  padding: 26px 8px;
+  background: #f5f6ff;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.emoji-display.long-emoji {
+  font-size: clamp(1.3rem, 4.8vw, 2rem);
+  letter-spacing: 3px;
+  padding: 18px 10px;
+}
+
+.emoji-display.ultra-emoji {
+  font-size: clamp(1rem, 3.6vw, 1.5rem);
+  letter-spacing: 2px;
+}
+
+/* ===== 选项 ===== */
+.options {
+  display: grid;
+  gap: 12px;
+}
+
+.option-btn {
+  text-align: left;
+  padding: 14px 18px;
+  font-size: 1.02rem;
+  border: 2px solid #e0e4f5;
+  background: #fff;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: #333;
+  line-height: 1.5;
+}
+
+.option-btn:hover:not(:disabled) {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.18);
+}
+
+.option-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.option-btn.correct {
+  background: #e8f8ee;
+  border-color: #34c759;
+  color: #1b7a3d;
+  opacity: 1;
+  font-weight: 700;
+}
+
+.option-btn.wrong {
+  background: #fdecec;
+  border-color: #ff5252;
+  color: #c62828;
+  opacity: 1;
+  animation: shake 0.4s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* ===== 反馈 ===== */
+.feedback {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  display: none;
+}
+
+.feedback.show {
+  display: block;
+  animation: slideUp 0.3s ease;
+}
+
+.feedback.good {
+  background: #e8f8ee;
+  color: #1b7a3d;
+  border: 1px solid #b8e6c8;
+}
+
+.feedback.bad {
+  background: #fff4e5;
+  color: #b26a00;
+  border: 1px solid #ffd8a8;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 控制按钮 ===== */
+.controls {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22px;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #eef1fb;
+  color: #4b56a5;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #dde3f7;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-big {
+  padding: 14px 44px;
+  font-size: 1.1rem;
+}
+
+/* ===== 结果界面 ===== */
+#result-screen {
+  text-align: center;
+}
+
+.rating-icon {
+  font-size: 4.5rem;
+  margin-bottom: 6px;
+  animation: ratingBounce 0.6s ease;
+}
+
+@keyframes ratingBounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.rating-desc {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.result-level {
+  color: #5b6ee1;
+  font-weight: 700;
+  margin: -6px 0 6px;
+}
+
+.result-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 26px;
+}
+
+.stat {
+  background: #f5f6ff;
+  border-radius: 14px;
+  padding: 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-num {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #5b6ee1;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+@media (max-width: 480px) {
+  .level-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .level-btn span {
+    font-size: .58rem;
+  }
+
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .emoji-display {
+    letter-spacing: 4px;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .controls .btn {
+    width: 100%;
+  }
+}

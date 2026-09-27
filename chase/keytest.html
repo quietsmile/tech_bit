@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>按键码监看 — 验证键盘重映射</title>
+<style>
+  body { background:#0d141d; color:#dce8f2; margin:0; padding:28px 34px;
+         font:14px/1.7 -apple-system,"PingFang SC",sans-serif; }
+  h1 { font-size:19px; margin:0 0 4px; }
+  p.hint { color:#8fa5b8; margin:4px 0 18px; }
+  #big { font:700 46px/1.2 ui-monospace,Menlo,monospace; color:#ffe08a; letter-spacing:1px;
+         background:#111b26; border:1px solid #2c3f51; border-radius:14px; padding:22px 26px; }
+  #verdict { margin-top:14px; font-size:17px; font-weight:700; min-height:26px; }
+  table { border-collapse:collapse; margin-top:20px; font-size:12px; }
+  th,td { border:1px solid #26384a; padding:5px 11px; text-align:left; }
+  th { background:#16212c; color:#9fd8ff; font-weight:600; }
+  .yes { color:#5ff1bd; } .no { color:#ff8a80; }
+  #log { margin-top:18px; padding:10px 12px; background:#0b1219; border:1px solid #26384a;
+         border-radius:10px; font:11px/1.6 ui-monospace,Menlo,monospace; color:#8fa9bd;
+         max-height:210px; overflow:auto; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<h1>按键码监看</h1>
+<p class="hint">在这页里分别用两块键盘按 <b>W</b>（和 <b>I</b>、<b>↑</b>）。
+   苹果键盘应显示 <code>KeyW</code>；Logitech 键盘如果重映射生效，应显示 <code>F13</code>。</p>
+<div id="big">按任意键…</div>
+<div id="verdict"></div>
+
+<table>
+  <tr><th>按下的物理键</th><th>正常键码</th><th>重映射后（hidutil）</th><th>在游戏里控制</th></tr>
+  <tr><td>W A S D</td><td>KeyW KeyA KeyS KeyD</td><td>F13 F14 F15 F16</td><td>玩家1（苹果键盘） / <b>玩家3（Logitech）</b></td></tr>
+  <tr><td>I J K L</td><td>KeyI KeyJ KeyK KeyL</td><td>F17 F18 F19 F20</td><td>玩家2（苹果键盘） / <b>玩家4（Logitech）</b></td></tr>
+  <tr><td>↑ ← ↓ →</td><td>ArrowUp …</td><td>不变</td><td>玩家3（无论哪块键盘）</td></tr>
+</table>
+
+<div id="log"></div>
+
+<script>
+const big=document.getElementById('big'), verdict=document.getElementById('verdict'), log=document.getElementById('log');
+const FKEY={F13:'Logitech 键盘已重映射 → 玩家3 上',F14:'Logitech → 玩家3 左',F15:'Logitech → 玩家3 下',F16:'Logitech → 玩家3 右',
+            F17:'Logitech → 玩家4 上',F18:'Logitech → 玩家4 左',F19:'Logitech → 玩家4 下',F20:'Logitech → 玩家4 右'};
+window.addEventListener('keydown', e=>{
+  big.textContent = `${e.code}`;
+  big.style.color = FKEY[e.code] ? '#5ff1bd' : '#ffe08a';
+  if(FKEY[e.code]){
+    verdict.innerHTML = `<span class="yes">✓ 重映射生效</span>：${FKEY[e.code]}`;
+  }else if(e.code==='KeyW'||e.code==='KeyA'||e.code==='KeyS'||e.code==='KeyD'){
+    verdict.innerHTML = `<span class="no">✗ 这块键盘还是原样</span>（KeyW/KeyA/KeyS/KeyD）。`
+      + `如果这是 Logitech 那台，说明 hidutil 的映射没生效，需要换方案（Karabiner 或 WebHID）。`;
+  }else{
+    verdict.textContent = `code=${e.code}  key=${JSON.stringify(e.key)}  location=${e.location}`;
+  }
+  log.textContent = `[${new Date().toLocaleTimeString()}] code=${e.code}  key=${JSON.stringify(e.key)}  keyCode=${e.keyCode}\n` + log.textContent;
+  e.preventDefault();
+}, true);
+</script>
+</body>
+</html>

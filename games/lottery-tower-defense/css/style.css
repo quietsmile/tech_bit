@@ -1,0 +1,40 @@
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box} body{margin:0;min-height:100vh;color:#e8f3ff;background:radial-gradient(circle at 18% 12%,#254a68,#070f1a 65%)}
+main{max-width:1500px;margin:0 auto;padding:22px 18px 55px}
+a.home-button{position:fixed;top:14px;right:14px;z-index:99;padding:8px 13px;border-radius:999px;text-decoration:none;background:#122738cc;color:#dbeafe;border:1px solid #38bdf855;font-size:12px}
+header{text-align:center;margin:18px 0 22px} h1{font-size:clamp(30px,5vw,52px);margin:0 0 6px;color:#ffd166;text-shadow:0 0 25px #f59e0b66} p{margin:0;color:#9fb6cc}
+.hidden{display:none!important}.card{background:#0d1b2acc;border:1px solid #28455e;border-radius:18px;padding:15px;backdrop-filter:blur(12px);box-shadow:0 16px 45px #0005}
+#setup,#result{max-width:720px;margin:0 auto 18px}.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+label{display:block;color:#a5c3d6;font-size:13px} select,input,button{font:inherit}
+select,input{width:100%;margin-top:5px;padding:10px;border-radius:10px;border:1px solid #45637c;background:#081420;color:#fff}
+button{cursor:pointer;border:1px solid #45637c;background:#20374a;color:#d9f0ff;padding:10px 14px;border-radius:11px}
+button:hover{border-color:#7dd3fc} button.primary{background:linear-gradient(120deg,#f59e0b,#38bdf8);border:0;color:#04121d;font-weight:850} button.small{padding:7px 10px;border-radius:9px}
+#playerSetup{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0 16px}
+.setup-row,.deploy-row{display:flex;align-items:center;gap:8px;background:#081420aa;border:1px solid #28455e;border-radius:10px;padding:8px}
+.setup-row input{margin:0}.setup-row select{margin:0}
+#game{display:grid;gap:14px}.battle-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:14px}.battle-top b{color:#ffd166}
+.stage{display:grid;grid-template-columns:290px minmax(430px,1fr) 400px;gap:14px;align-items:start}
+.player-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:11px}
+.player-tab{padding:8px;border-radius:10px;font-size:12px;cursor:pointer;border:1px solid #38546e;background:#0a1826;color:#c5d9e8}
+.player-tab.active{border-color:#7dd3fc;color:#fff;background:#15344b;box-shadow:0 0 16px #38bdf855}
+.control-card{background:#081420aa;border:1px solid #28455e;border-radius:14px;padding:11px}.controlled-name{font-weight:800;margin-bottom:8px}
+.resource{display:flex;justify-content:space-between;font-size:12px;color:#a5c3d6;margin:5px 0}.resource b{color:#fff}
+#spinBtn{width:100%;margin:12px 0 8px}#upgradeBtn,#deployBtn{width:100%;margin-top:7px}
+.inventory-title{margin:13px 0 6px;color:#9fb6cc;font-size:12px}.inventory{display:grid;gap:5px;max-height:190px;overflow:auto;font-size:11px}
+.inventory div{display:flex;justify-content:space-between;align-items:center;gap:5px;padding:5px 6px;border-radius:7px;background:#0a1826;border:1px solid #24384a}
+.inventory-actions{display:flex;gap:4px}
+.inventory-actions button,.inventory button{padding:2px 6px;border-radius:5px;font-size:10px}
+.placement-hint{margin:10px 0 4px;color:#8fb1c9;font-size:11px;line-height:1.5}
+.battle-wrap{padding:8px;position:relative}#battleCanvas{display:block;width:100%;height:auto;background:#08131f;border-radius:12px}
+#battleMsg{position:absolute;left:16px;top:14px;font-weight:800;color:#fde68a;text-shadow:0 2px 8px #000}
+.wheel-wrap{display:grid;place-items:center;padding:8px;margin-bottom:12px}#wheelCanvas{width:100%;max-width:360px;height:auto}
+.wheel-title{width:100%;text-align:center;font-size:13px;font-weight:800;color:#ffd166;margin-bottom:4px}
+.probability-legend{display:grid;gap:4px;width:100%;font-size:11px;color:#b8d5e6}
+.probability-legend div{display:flex;justify-content:space-between;padding:4px 7px;border-radius:7px;background:#0a1826;border:1px solid #24384a}
+.probability-legend div.rare{background:#170f2bcc}
+.ranking-card h3,.help h3{margin:0 0 8px;font-size:15px}.help p{margin:0;color:#93b3c8;font-size:12px;line-height:1.6}
+#ranking{margin:0;padding-left:18px;font-size:12px;line-height:1.9}
+.result{max-width:620px;margin:0 auto}#champion{font-size:26px;font-weight:850;color:#ffd166;margin:10px 0 18px}
+#finalRanking li{margin:7px 0;padding:9px 12px;border-radius:9px;background:#081420;border:1px solid #27455e}
+@media(max-width:1100px){.stage{grid-template-columns:1fr;}.right-panel{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
+@media(max-width:760px){.setup-grid,.row,.right-panel{grid-template-columns:1fr}.battle-top{font-size:12px}}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>贪吃蛇</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #1b1f2a;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 16px;
+    touch-action: none;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 8px; }
+  .hud {
+    display: flex;
+    gap: 24px;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+  .hud span b { color: #7bd88f; }
+  #board {
+    background: #10131b;
+    border: 2px solid #3a4256;
+    border-radius: 8px;
+    max-width: 100%;
+    max-height: 60vh;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-size: 1rem;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    background: #7bd88f;
+    color: #10231a;
+    cursor: pointer;
+  }
+  button:active { transform: scale(0.96); }
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .dpad button {
+    font-size: 1.3rem;
+    padding: 0;
+    background: #2c3447;
+    color: #eee;
+  }
+  .dpad .blank { visibility: hidden; }
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+    z-index: 10;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 { font-size: 1.6rem; }
+  #overlay p { font-size: 1.1rem; color: #bbb; }
+
+    .home-button {
+      position: fixed; top: 14px; left: 14px; z-index: 30;
+      padding: 8px 13px; border-radius: 999px; text-decoration: none;
+      background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28);
+      font-size: 12px; font-weight: 700; backdrop-filter: blur(8px);
+    }
+    .home-button:hover { border-color: #7dd3fc; color: #fff; }
+
+  </style>
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+  <h1>贪吃蛇</h1>
+  <div class="hud">
+    <span id="roomChip" class="hidden">房间 <b id="roomChipCode">—</b></span>
+    <span>分数：<b id="score">0</b></span>
+    <span id="oppWrap" class="hidden">对手分：<b id="oppScore">0</b></span>
+    <span>最高分：<b id="best">0</b></span>
+  </div>
+  <canvas id="board" width="400" height="400"></canvas>
+  <div class="controls">
+    <button id="pauseBtn">暂停</button>
+    <button id="restartBtn">重新开始</button>
+  </div>
+  <div class="dpad">
+    <button class="blank"></button>
+    <button data-dir="up">↑</button>
+    <button class="blank"></button>
+    <button data-dir="left">←</button>
+    <button class="blank"></button>
+    <button data-dir="right">→</button>
+    <button class="blank"></button>
+    <button data-dir="down">↓</button>
+    <button class="blank"></button>
+  </div>
+  <div id="overlay" class="hidden">
+    <h2 id="overlayTitle">游戏结束</h2>
+    <p id="overlayText"></p>
+    <button id="overlayRestart">再来一局</button>
+  </div>
+  <div id="menu">
+    <div class="menu-panel">
+      <h2>🐍 贪吃蛇</h2>
+      <button id="btnSolo" class="menu-btn primary">🎮 单人游戏</button>
+      <button id="btnOnline" class="menu-btn">🌐 联机对战（2–6 人）</button>
+      <div id="menuStatus"></div>
+    </div>
+  </div>
+  <style>
+    #menu {
+      position: fixed; inset: 0; z-index: 20;
+      background: rgba(5, 8, 14, 0.88);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #menu.hidden2 { display: none; }
+    .menu-panel {
+      width: min(88vw, 340px); padding: 28px 26px; text-align: center;
+      background: #141826; border: 1px solid #3a4256; border-radius: 18px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .menu-panel h2 { font-size: 1.5rem; margin-bottom: 4px; }
+    .menu-btn { width: 100%; font-size: 1rem; padding: 12px; }
+    .menu-btn.primary { background: linear-gradient(120deg, #38bdf8, #4ade80); }
+    .join-row { display: flex; gap: 8px; }
+    .join-row input {
+      flex: 1; padding: 10px 12px; border-radius: 6px; border: 1px solid #3a4256;
+      background: #10131b; color: #eee; font-size: 1rem; text-transform: uppercase;
+      text-align: center; letter-spacing: 3px; outline: none;
+    }
+    .join-row .menu-btn { width: auto; padding: 10px 16px; }
+    #menuStatus { min-height: 18px; font-size: 0.85rem; color: #fca5a5; }
+    .hidden2 { display: none !important; }
+  </style>
+  <script src="game.js"></script>
+</body>
+</html>

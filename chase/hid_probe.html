@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>WebHID 键盘探测 — 能不能按“哪块键盘”分开</title>
+<style>
+  body { background:#0f1620; color:#dce8f2; font:13px/1.7 -apple-system,"PingFang SC",sans-serif;
+         margin:0; padding:24px 28px 60px; }
+  h1 { font-size:18px; margin:0 0 6px; }
+  h2 { font-size:14px; margin:22px 0 8px; color:#7fd7ff; }
+  p, li { color:#9fb3c4; }
+  button { padding:10px 20px; margin:6px 8px 6px 0; border:0; border-radius:8px; cursor:pointer;
+           background:linear-gradient(135deg,#4facfe,#00f2fe); color:#06121c; font-weight:700; font-size:13px; }
+  button.ghost { background:#20374a; color:#cfe6ff; border:1px solid #3f5d75; }
+  #devs { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
+  .card { min-width:280px; flex:1 1 320px; background:#16212c; border:1px solid #2c3f51;
+          border-radius:12px; padding:12px 14px; }
+  .card .name { font-weight:700; color:#ffe08a; }
+  .card .meta { font-size:11px; color:#7d93a6; }
+  .keys { display:flex; gap:6px; margin:8px 0 6px; flex-wrap:wrap; }
+  .keys span { min-width:26px; text-align:center; padding:3px 6px; border-radius:6px;
+               background:#20374a; border:1px solid #3f5d75; color:#8fa9bd; font-size:11px; }
+  .keys span.on { background:#00d193; color:#04150f; border-color:#5ff1bd; font-weight:700; }
+  .log { max-height:150px; overflow:auto; margin-top:6px; padding:8px; background:#0b1219;
+         border-radius:8px; font:11px/1.5 ui-monospace,Menlo,monospace; color:#9ed7b6; white-space:pre-wrap; }
+  #out { margin-top:18px; padding:12px; background:#0b1219; border:1px solid #2c3f51; border-radius:10px;
+         font:11px/1.6 ui-monospace,Menlo,monospace; color:#c8e6c9; white-space:pre-wrap; max-height:340px; overflow:auto; }
+  .warn { color:#ffb86b; }
+</style>
+</head>
+<body>
+<h1>WebHID 键盘探测</h1>
+<h2>① 先看这个：按键码监视（验证 hidutil 重映射有没有生效）</h2>
+<p>在这块区域里点一下（让它获得焦点），然后<b>分别用两块键盘</b>按 <kbd>W</kbd>：
+   苹果键盘应该显示 <code>code=KeyW</code>，Logitech 键盘在重映射生效后应该显示 <code>code=F13</code>。
+   如果两块都显示 <code>KeyW</code>，就是映射没生效（先跑 <code>sudo ./two_keyboards.sh --on</code>）。</p>
+<div id="mon" tabindex="0" style="outline:none;background:#0b1219;border:1px solid #2c3f51;border-radius:10px;
+     padding:14px 16px;margin:8px 0 4px;font:12px/1.6 ui-monospace,Menlo,monospace;color:#9ed7b6;cursor:text;">
+  <div style="font-size:26px;font-weight:700;color:#ffe08a" id="big">按任意键…</div>
+  <div id="mlog" style="max-height:130px;overflow:auto;margin-top:8px;color:#8fa9bd;white-space:pre-wrap"></div>
+</div>
+
+<h2>② 进阶：WebHID（可选，按设备区分键盘的另一条路）</h2>
+<p>目的：验证「能不能按<span style="color:#ffe08a">哪一块键盘</span>来区分按键」。请用 <b>Chrome</b> 打开本页
+   （Edge 也行，Safari 不支持 WebHID）。</p>
+<p class="warn">如果点完按钮弹窗里看不到键盘、或者按了键但下面的日志没反应：去
+   「系统设置 → 隐私与安全性 → 输入监控」把 Google Chrome 勾上，然后<b>完全退出 Chrome 再重开</b>。</p>
+
+<h2>第 1 步：添加键盘（每块键盘点一次，各授权一次）</h2>
+<button onclick="pick(1,6)">添加键盘设备（usage 6）</button>
+<button class="ghost" onclick="pick(null,null)">添加任意 HID 设备（找不到键盘时用）</button>
+<button class="ghost" onclick="dump()">输出完整诊断文本</button>
+<button class="ghost" onclick="clearLog()">清空</button>
+<p>添加后在对应的卡片里按几下 <b>W A S D</b>，看哪个卡片亮起来 —— 亮的那张就是那块键盘。</p>
+<div id="devs"></div>
+
+<h2>诊断输出（把这里的内容贴给我）</h2>
+<pre id="out">（等待操作…）</pre>
+
+<script>
+const out = document.getElementById('out');
+// ---- ① 按键码监视：验证 hidutil 重映射 ----
+(function(){
+  const big = document.getElementById('big'), log = document.getElementById('mlog');
+  const mon = document.getElementById('mon');
+  mon.focus();
+  window.addEventListener('keydown', e=>{
+    big.textContent = `code = ${e.code}    key = ${e.key || '(空)'}    location = ${e.location}`;
+    big.style.color = /^F1[3-9]$|^F20$/.test(e.code) ? '#5ff1bd' : '#ffe08a';
+    log.textContent = `[${new Date().toLocaleTimeString()}] code=${e.code} key=${JSON.stringify(e.key)} keyCode=${e.keyCode} repeat=${e.repeat}\n` + log.textContent;
+    if(log.textContent.length > 3000) log.textContent = log.textContent.slice(0,3000);
+    e.preventDefault();
+  }, true);
+})();
+
+const devsHost = document.getElementById('devs');
+const cards = new Map();
+const notes = [];
+function say(s){ notes.push(s); out.textContent = notes.join('\n'); }
+function clearLog(){ notes.length = 0; out.textContent = ''; }
+
+// HID usage id -> 名字（只列我们关心的：字母、方向键、修饰键、F 区）
+const USAGE = {
+  4:'A',5:'B',6:'C',7:'D',8:'E',9:'F',10:'G',11:'H',12:'I',13:'J',14:'K',15:'L',16:'M',
+  17:'N',18:'O',19:'P',20:'Q',21:'R',22:'S',23:'T',24:'U',25:'V',26:'W',27:'X',28:'Y',29:'Z',
+  30:'1',31:'2',32:'3',33:'4',34:'5',35:'6',36:'7',37:'8',38:'9',39:'0',
+  40:'Enter',41:'Esc',42:'Backspace',43:'Tab',44:'Space',45:'-',46:'=',47:'[',48:']',49:'\\',
+  58:'F1',59:'F2',60:'F3',61:'F4',62:'F5',63:'F6',64:'F7',65:'F8',66:'F9',67:'F10',68:'F11',69:'F12',
+  79:'→',80:'←',81:'↓',82:'↑',224:'LCtrl',225:'LShift',226:'LAlt',227:'LMeta'
+};
+const name = u => USAGE[u] || ('0x'+u.toString(16));
+
+function bootLike(data, reportId){
+  // 常见的 8 字节 boot 报文：[修饰键, 保留, k1..k6]；有的设备前面带 report id（Chrome 会去掉）
+  if(data.length >= 8){
+    const keys = [];
+    for(let i=2;i<8;i++) if(data[i]) keys.push(name(data[i]));
+    const mods = [];
+    const m = data[0];
+    [1,2,4,8,16,32,64,128].forEach((bit,i)=>{ if(m & bit) mods.push(['LCtrl','LShift','LAlt','LMeta','RCtrl','RShift','RAlt','RMeta'][i]); });
+    return { mods, keys };
+  }
+  return null;
+}
+
+function card(dev){
+  if(cards.has(dev)) return cards.get(dev);
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.innerHTML = `<div class="name">${dev.productName || '(无名称)'}</div>
+    <div class="meta">vendor 0x${dev.vendorId.toString(16)} · product 0x${dev.productId.toString(16)}
+    · opened=${dev.opened}</div>
+    <div class="keys" id="k_${dev.productId}_${dev.vendorId}"></div>
+    <div class="log"></div>`;
+  devsHost.appendChild(el);
+  cards.set(dev, el);
+  return el;
+}
+
+function attach(dev){
+  const el = card(dev);
+  const keyRow = el.querySelector('.keys');
+  const log = el.querySelector('.log');
+  const lit = new Map();
+  dev.removeEventListener('inputreport', dev._h);
+  dev._h = (e)=>{
+    const data = new Uint8Array(e.data.buffer);
+    const hex = [...data].map(b=>b.toString(16).padStart(2,'0')).join(' ');
+    const dec = bootLike(data, e.reportId);
+    const line = `[${new Date().toLocaleTimeString()}] reportId=${e.reportId} len=${data.length}  ${hex}`
+               + (dec ? `\n   → 修饰=${dec.mods.join('+')||'-'} 按下=[${dec.keys.join(' ')||'-'}]` : '');
+    log.textContent = line + '\n' + log.textContent;
+    if(log.textContent.length > 4000) log.textContent = log.textContent.slice(0,4000);
+    if(dec){
+      keyRow.innerHTML = dec.keys.concat(dec.mods).map(k=>`<span class="on">${k}</span>`).join('')
+                       || '<span>（无键）</span>';
+    }
+  };
+  dev.addEventListener('inputreport', dev._h);
+}
+
+async function pick(usagePage, usage){
+  if(!navigator.hid){ say('❌ 这个浏览器没有 navigator.hid，请用 Chrome / Edge。'); return; }
+  try{
+    const filters = usagePage ? [{ usagePage, usage }] : [];
+    const arr = await navigator.hid.requestDevice({ filters });
+    if(!arr.length){ say('（没有选择设备）'); return; }
+    for(const d of arr){
+      say(`✅ 选中设备：${d.productName}  vendor=0x${d.vendorId.toString(16)} product=0x${d.productId.toString(16)}`);
+      try{
+        if(!d.opened) await d.open();
+        say(`   已打开；collections=${JSON.stringify(d.collections||[]).slice(0,300)}`);
+        attach(d);
+      }catch(err){
+        say(`   ❌ 打开失败：${err.message}（macOS 上通常是“输入监控”权限问题）`);
+      }
+    }
+  }catch(err){ say('❌ requestDevice 失败：' + err.message); }
+}
+
+async function dump(){
+  say('\n===== 诊断 =====');
+  say('UA: ' + navigator.userAgent);
+  say('isSecureContext: ' + window.isSecureContext);
+  say('navigator.hid: ' + !!navigator.hid);
+  if(navigator.hid){
+    const known = await navigator.hid.getDevices();
+    say('已授权设备数: ' + known.length);
+    for(const d of known){
+      say(` - ${d.productName} vendor=0x${d.vendorId.toString(16)} product=0x${d.productId.toString(16)} opened=${d.opened}`);
+      say('   collections: ' + JSON.stringify(d.collections||[]).slice(0,400));
+    }
+  }
+  say('===== 请把以上全部内容 + 上面的按键日志贴给助手 =====');
+}
+
+// 页面一加载就把已授权设备接回来（第二次打开页面时不用重新授权）
+(async()=>{
+  if(!navigator.hid){ say('❌ 没有 navigator.hid（用 Chrome / Edge 打开）'); return; }
+  const known = await navigator.hid.getDevices();
+  for(const d of known){
+    if(!d.opened) { try{ await d.open(); }catch(_){} }
+    say(`↻ 已恢复设备：${d.productName}（opened=${d.opened}）`);
+    if(d.opened) attach(d);
+  }
+  say('Chrome 版本相关：navigator.hid ' + (navigator.hid ? '可用' : '不可用'));
+})();
+</script>
+</body>
+</html>

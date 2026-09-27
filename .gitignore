@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 系统文件
+.DS_Store
+
+# 日志
+logs/
+*.log
+
+# 大文件素材（古诗 AI 图片，仅保留在本地）
+games/poem-guess/assets/
+
+# 运行时数据
+games/prize-lottery/data.json
+
+# 编译产物
+*.app
+
+# 部署快照与本地环境配置（含敏感信息，不上传）
+center/
+current/
+ds-codex-env-slim-20260921/
+
+# DS 环境相关（与本项目无关）
+check_dsv41.sh
+*.tar.gz
+ds-codex-env-slim*

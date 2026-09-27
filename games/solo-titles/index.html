@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>单人闯关 · 称号墙</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏大厅</a>
+  <main>
+    <header>
+      <h1>🏅 单人闯关 · 称号墙</h1>
+      <p class="subtitle">完成 6 个单人闯关游戏，收集全部专属称号！</p>
+      <div class="progress-card">
+        <div class="progress-text">已收集 <b id="earned-count">0</b> / 6 个称号</div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <p id="all-done" class="all-done hidden">🎊 太厉害了！全部称号达成，你就是闯关小王者！</p>
+      </div>
+    </header>
+    <section class="grid" id="title-grid"></section>
+    <p class="note">称号保存在本机浏览器中 · 每通关一次对应游戏即可点亮 ✨</p>
+  </main>
+  <script src="titles.js"></script>
+  <script src="board.js"></script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.home-button {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(8, 19, 31, 0.86);
+  color: #dbeafe;
+  border: 1px solid rgba(125, 211, 252, 0.3);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+}
+
+.home-button:hover {
+  border-color: #7dd3fc;
+  color: #fff;
+}
+
+:root {
+  --bg1: #fff7e6;
+  --bg2: #ffe3ec;
+  --ink: #43302b;
+  --card: #ffffff;
+  --primary: #ff8a3d;
+  --primary-dark: #f06d16;
+  --green: #4caf7d;
+  --red: #ef5350;
+  --radius: 18px;
+}
+
+body {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(160deg, var(--bg1), var(--bg2));
+  min-height: 100vh;
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.app {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hud-item {
+  flex: 1;
+  min-width: 90px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 14px;
+  box-shadow: 0 3px 8px rgba(67, 48, 43, .08);
+  text-align: center;
+}
+.hud-item strong { font-size: 18px; color: var(--primary-dark); }
+.hud-item.combo.active { animation: pop .3s; background: #fff0e0; }
+.hud-item.timer.low strong { color: var(--red); animation: pop .5s infinite alternate; }
+
+@keyframes pop { 50% { transform: scale(1.15); } }
+
+/* ---------- 首页 / 结果 ---------- */
+#stage, .result {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 36px 24px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(67, 48, 43, .10);
+}
+.game-title { font-size: 30px; margin-bottom: 10px; }
+.subtitle { color: #8a716a; margin-bottom: 24px; }
+.stars { font-size: 34px; margin: 12px 0 20px; letter-spacing: 4px; }
+
+/* ---------- 年级选择 ---------- */
+.grade-picker { margin-bottom: 22px; }
+.grade-label { font-size: 14px; color: #8a716a; margin: 0 0 10px; font-weight: 700; }
+.grade-options { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.grade-btn {
+  border: 2px solid #f0dcc8;
+  background: #fff;
+  color: #8a716a;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .12s;
+}
+.grade-btn:hover { border-color: var(--primary); color: var(--primary-dark); }
+.grade-btn.active {
+  background: linear-gradient(135deg, var(--primary), #ffb45e);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(240, 109, 22, .30);
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 32px;
+  font-size: 17px;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
+  font-weight: 600;
+}
+.btn:active { transform: scale(.95); }
+.btn.primary {
+  background: linear-gradient(135deg, var(--primary), #ffb45e);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(240, 109, 22, .35);
+}
+.btn.primary:hover { transform: translateY(-2px); }
+.btn.ghost {
+  background: transparent;
+  color: #a08a83;
+  border: 2px solid #e8d8d2;
+}
+
+/* ---------- 答题 ---------- */
+.quiz { display: flex; flex-direction: column; gap: 14px; }
+.pic-frame {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fdf1e3;
+  aspect-ratio: 16 / 10;
+  box-shadow: 0 4px 14px rgba(67, 48, 43, .10);
+}
+.pic-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pic-fallback { position: absolute; inset: 0; }
+
+/* 图片缺失时的卡通占位图（纯 CSS/SVG 背景） */
+.pic-fallback {
+  background:
+    radial-gradient(circle at 78% 22%, #ffe082 0 9%, transparent 10%),
+    linear-gradient(180deg, #aee3f5 0 62%, #8fd486 62% 100%);
+}
+.pic-fallback::before {
+  content: "🎨 古诗插画";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255,255,255,.85);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: #a08a83;
+  white-space: nowrap;
+}
+
+.options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .options { grid-template-columns: 1fr; } }
+.option {
+  background: var(--card);
+  border: 2px solid #f0e2da;
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .1s;
+  text-align: center;
+}
+.option:hover:not(:disabled) { border-color: var(--primary); transform: translateY(-2px); }
+.option.correct { background: #e6f6ee; border-color: var(--green); color: #1d6b46; font-weight: 700; }
+.option.wrong { background: #fdecea; border-color: var(--red); color: #a33; }
+.option:disabled { cursor: default; }
+
+.feedback {
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 15px;
+  line-height: 1.6;
+  animation: pop .25s;
+}
+.feedback.ok { background: #e6f6ee; color: #1d6b46; }
+.feedback.no { background: #fdecea; color: #a33; }
+
+.quiz-actions { display: flex; gap: 12px; justify-content: center; }
+
+.hidden { display: none !important; }

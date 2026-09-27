@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>给机器人指路</title>
+  <style>
+    .home-button {
+      position: fixed; top: 14px; left: 14px; z-index: 30;
+      padding: 8px 13px; border-radius: 999px; text-decoration: none;
+      background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28);
+      font-size: 12px; font-weight: 700; backdrop-filter: blur(8px);
+    }
+    .home-button:hover { border-color: #7dd3fc; color: #fff; }
+  </style>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+  <main class="app">
+    <!-- 开始页 -->
+    <section id="setup" class="screen">
+      <h1>🤖 给机器人指路</h1>
+      <p class="desc">
+        小机器人要去寻找宝藏！可是它听不懂人话，只认识<b>指令</b>。<br/>
+        把指令按顺序排好，点「运行」，机器人就会一步一步照着做。<br/>
+        撞墙、踩陷阱都会失败，捡到宝箱有加分哦！
+      </p>
+      <div class="grade-picker">
+        <p class="grade-label">🎓 选择年级</p>
+        <div class="grade-options">
+          <button class="grade-btn active" data-grade="1" type="button">低年级<small>1–2年级 · 基础指令</small></button>
+          <button class="grade-btn" data-grade="2" type="button">中年级<small>3–4年级 · 解锁循环</small></button>
+          <button class="grade-btn" data-grade="3" type="button">高年级<small>5–6年级 · 解锁条件</small></button>
+        </div>
+        <p class="grade-note" id="gradeNote"></p>
+      </div>
+      <button id="startBtn" class="btn primary big">🚀 开始冒险</button>
+    </section>
+
+    <!-- 游戏页 -->
+    <section id="game" class="screen hidden">
+      <header class="hud">
+        <div class="hud-item">得分 <strong id="score">0</strong></div>
+        <div class="hud-item">第 <strong id="levelNo">1</strong> / <span id="levelTotal">3</span> 关</div>
+        <div class="hud-item">宝箱 <strong id="chestCount">0</strong> 🎁</div>
+        <button id="menuBtn" class="btn ghost small">🏠 菜单</button>
+      </header>
+
+      <div class="playfield">
+        <div id="board" class="board"></div>
+        <div class="side">
+          <div class="mission">
+            <span id="levelName" class="level-name"></span>
+            <p id="missionText" class="mission-text"></p>
+          </div>
+
+          <p class="program-label">📜 我的程序 <small>（点下面的指令按钮，机器人会从上往下执行）</small></p>
+          <div id="program" class="program">
+            <p id="programEmpty" class="program-empty">还没有指令，先从「前进」开始吧！</p>
+          </div>
+
+          <div class="tray" id="tray">
+            <button class="cmd-btn" data-cmd="forward" type="button"><i>⬆️</i><span>前进</span></button>
+            <button class="cmd-btn" data-cmd="left" type="button"><i>↰</i><span>左转</span></button>
+            <button class="cmd-btn" data-cmd="right" type="button"><i>↱</i><span>右转</span></button>
+            <button class="cmd-btn tier2" data-cmd="repeat" type="button"><i>🔁</i><span>重复3次</span></button>
+            <button class="cmd-btn tier3" data-cmd="cond" type="button"><i>🧱</i><span>有墙？右转</span></button>
+            <button class="cmd-btn close-rep hidden" id="closeRepeatBtn" type="button"><i>✅</i><span>结束重复</span></button>
+          </div>
+
+          <div class="controls">
+            <button id="undoBtn" class="btn ghost small" type="button">↩️ 撤销</button>
+            <button id="clearBtn" class="btn ghost small" type="button">🗑️ 清空</button>
+            <button id="runBtn" class="btn primary" type="button">▶️ 运行</button>
+            <button id="stopBtn" class="btn danger hidden" type="button">⏹ 停止</button>
+          </div>
+
+          <div id="feedback" class="feedback hidden"></div>
+
+          <div class="level-nav">
+            <span class="level-nav-label">关卡：</span>
+            <span id="levelDots" class="level-dots"></span>
+          </div>
+          <div class="nav-actions">
+            <button id="retryBtn" class="btn ghost" type="button">↻ 重玩本关</button>
+            <button id="nextBtn" class="btn primary hidden" type="button">下一关 ▶</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="data/levels.js"></script>
+  <script src="../arena/arena.js"></script>
+  <script src="../solo-titles/titles.js" data-title-key="robot"></script>
+<script src="game.js"></script>
+</body>
+</html>

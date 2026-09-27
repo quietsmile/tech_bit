@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>五子棋</title>
+<style>
+    .home-button {
+      position: fixed; top: 14px; left: 14px; z-index: 30;
+      padding: 8px 13px; border-radius: 999px; text-decoration: none;
+      background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28);
+      font-size: 12px; font-weight: 700; backdrop-filter: blur(8px);
+    }
+    .home-button:hover { border-color: #7dd3fc; color: #fff; }
+</style>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+  <main class="app">
+    <section id="startScreen" class="start-screen">
+      <h1>五子棋</h1>
+      <p class="start-desc">请选择游戏模式</p>
+      <button id="modePve" type="button">单人挑战（人机）</button>
+      <button id="modePvp" type="button">双人对战（同屏）</button>
+      <div id="difficultyBox" class="difficulty-box" hidden>
+        <p>选择电脑强度</p>
+        <button class="difficulty" data-level="easy" type="button">简单</button>
+        <button class="difficulty" data-level="normal" type="button">普通</button>
+        <button class="difficulty" data-level="hard" type="button">困难</button>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="game-screen" hidden>
+      <header class="header">
+        <h1>五子棋</h1>
+        <div class="toolbar">
+          <button id="menuBtn" type="button">菜单</button>
+          <button id="restartBtn" type="button">重新开始</button>
+          <button id="undoBtn" type="button">悔棋</button>
+        </div>
+      </header>
+      <div id="modeInfo" class="mode-info"></div>
+      <div id="status" class="status" role="status">当前回合：黑棋</div>
+      <div id="result" class="result" hidden></div>
+      <div id="badgeBox" class="badge-box" hidden>
+        <div class="badge-title">🏅 棋盘小诸葛</div>
+        <div class="badge-desc">战胜电脑，获得称号徽章！</div>
+      </div>
+      <div id="board" class="board"></div>
+      <div id="stats" class="stats"></div>
+      <footer class="footer">双方轮流落子，横、竖、斜任意方向连成五子获胜</footer>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>

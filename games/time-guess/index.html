@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>猜时间闯关</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏大厅</a>
+
+  <main class="app">
+    <section id="setup-screen" class="screen">
+      <div class="hero">
+        <div class="hero-emoji">⏱️🎯🏀</div>
+        <h1>猜时间闯关</h1>
+        <p>三关挑战：猜时间 · 最快点击 · 篮球落地。看看谁的综合成绩最准！</p>
+      </div>
+
+      <form id="setup-form" class="panel">
+        <h2>挑战设置</h2>
+        <label class="target-label">
+          <span>第一关目标时间（秒）</span>
+          <input id="target-time" type="number" min="1" max="120" step="0.1" value="10" required>
+        </label>
+
+        <ul class="stage-rules">
+          <li><b>第 1 关 · 猜时间</b><span>凭感觉在目标时间停止，误差越小越好。</span></li>
+          <li><b>第 2 关 · 最快点击</b><span>开始后尽快点击停止，用时越短越好。</span></li>
+          <li><b>第 3 关 · 篮球落地</b><span>篮球落下弹起，在落地瞬间点击或按空格。</span></li>
+        </ul>
+
+        <div class="players-head">
+          <h3>挑战玩家</h3>
+          <button type="button" id="add-player" class="ghost-btn">➕ 添加玩家</button>
+        </div>
+        <div id="player-list" class="player-list"></div>
+
+        <button type="submit" class="btn primary big">🚀 开始闯关</button>
+        <p id="setup-error" class="error"></p>
+      </form>
+    </section>
+
+    <section id="game-screen" class="screen hidden">
+      <header class="game-header">
+        <div>
+          <div id="stage-badge" class="badge">第 1 / 3 关</div>
+          <h2 id="turn-player">玩家 1</h2>
+          <p id="turn-tip" class="turn-tip">目标：<b>10.0</b> 秒</p>
+        </div>
+        <button id="quit-game" class="ghost-btn small">重新设置</button>
+      </header>
+
+      <div id="guess-area" class="guess-area">
+        <div id="ball-stage" class="ball-stage hidden">
+          <div id="ball-track" class="ball-track">
+            <div id="ball" class="ball"></div>
+            <div class="ball-ground"></div>
+          </div>
+        </div>
+        <button id="timer-button" class="timer-btn" type="button">
+          <span id="timer-icon">▶️</span>
+          <span id="timer-label">开始</span>
+        </button>
+        <p id="timer-tip" class="timer-tip">点击按钮开始。</p>
+      </div>
+
+      <div id="result-area" class="result-area hidden">
+        <div id="result-emoji" class="result-emoji">🎯</div>
+        <div id="result-title" class="result-title">很棒！</div>
+        <div class="result-grid">
+          <div><span id="actual-time">0.00</span><small id="actual-label">实际秒数</small></div>
+          <div><span id="target-display">10.00</span><small id="target-label">目标秒数</small></div>
+          <div><span id="time-error">0.00</span><small id="error-label">误差（秒）</small></div>
+        </div>
+        <p id="score-line" class="score-line">综合误差：0.000 秒</p>
+        <button id="next-turn" class="btn primary big">下一关 ⏭️</button>
+      </div>
+
+      <div class="progress-info">
+        <span id="progress-text">1 / 3 轮</span>
+        <div class="progress"><div id="progress-bar"></div></div>
+      </div>
+    </section>
+
+    <section id="result-screen" class="screen hidden">
+      <div class="hero">
+        <div class="hero-emoji">🏆⏱️</div>
+        <h1>最终排名</h1>
+        <p id="result-subtitle">综合三关成绩，误差/用时越小越好</p>
+      </div>
+      <div id="ranking" class="ranking"></div>
+      <div class="result-actions">
+        <button id="play-again" class="btn primary big">🔄 同配置再来一局</button>
+        <button id="back-setup" class="btn secondary big">⚙️ 修改设置</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="../arena/arena.js"></script>
+  <script src="../solo-titles/titles.js" data-title-key="time"></script>
+<script src="game.js"></script>
+</body>
+</html>
