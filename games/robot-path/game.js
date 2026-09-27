@@ -117,6 +117,7 @@
     renderProgram();
     renderDots();
     updateControls();
+    updatePreview();
   }
 
   function buildBoard() {
@@ -163,11 +164,77 @@
     } else {
       r.style.transform = robotTransform();
     }
-    r.querySelector(".robot-body").style.transform = "rotate(" + rt.robot.rot + "deg)";
+    var body = r.querySelector(".robot-body");
+    /* --rot 供撞墙动画使用，避免动画期间朝向闪回 0 度 */
+    body.style.setProperty("--rot", rt.robot.rot + "deg");
+    body.style.transform = "rotate(" + rt.robot.rot + "deg)";
   }
   function robotTransform() {
     var lv = level();
     return "translate(" + (rt.robot.x * 100) + "%, " + (rt.robot.y * 100) + "%)";
+  }
+
+  /* ---------- 指令预览：按当前指令模拟机器人预计路线 ---------- */
+  function previewLayer() {
+    var layer = els.board.querySelector(".preview-layer");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.className = "preview-layer";
+      var robot = robotEl();
+      if (robot) els.board.insertBefore(layer, robot);
+      else els.board.appendChild(layer);
+    }
+    return layer;
+  }
+
+  function clearPreview() {
+    var layer = els.board.querySelector(".preview-layer");
+    if (layer) layer.innerHTML = "";
+  }
+
+  function updatePreview() {
+    if (!rt || state.running) {
+      clearPreview();
+      return;
+    }
+    var layer = previewLayer();
+    layer.innerHTML = "";
+    if (!state.program.length) return;
+
+    var lv = level();
+    var steps = flatten(state.program, []).slice(0, 200);
+    var p = { x: rt.robot.x, y: rt.robot.y, d: rt.robot.d };
+    var path = [{ x: p.x, y: p.y }];
+    var crash = null;
+    for (var i = 0; i < steps.length && !crash; i++) {
+      var cmd = steps[i];
+      if (cmd === "forward") {
+        var dd = DIRS[p.d];
+        var nx = p.x + dd.x, ny = p.y + dd.y;
+        if (isBlocked(nx, ny)) crash = { x: p.x, y: p.y };
+        else if (rt.traps.has(key(nx, ny))) crash = { x: nx, y: ny };
+        else { p.x = nx; p.y = ny; path.push({ x: nx, y: ny }); }
+      } else if (cmd === "left") {
+        p.d = (p.d + 3) % 4;
+      } else if (cmd === "right") {
+        p.d = (p.d + 1) % 4;
+      } else if (cmd === "cond") {
+        var d2 = DIRS[p.d];
+        if (isBlocked(p.x + d2.x, p.y + d2.y)) p.d = (p.d + 1) % 4;
+      }
+    }
+
+    function marker(cls, x, y, html) {
+      var m = document.createElement("span");
+      m.className = cls;
+      m.style.left = (x * 100 / lv.cols) + "%";
+      m.style.top = (y * 100 / lv.rows) + "%";
+      if (html != null) m.innerHTML = html;
+      layer.appendChild(m);
+    }
+    path.forEach(function (c) { marker("preview-dot", c.x, c.y); });
+    if (crash) marker("preview-crash", crash.x, crash.y, "💥");
+    else marker("preview-ghost", p.x, p.y, '<span style="transform:rotate(' + (p.d * 90) + 'deg)">🤖</span>');
   }
 
   /* ---------- 程序编辑 ---------- */
@@ -195,6 +262,7 @@
     sfx.click();
     renderProgram();
     updateControls();
+    updatePreview();
   }
   function closeRepeat() {
     if (state.running || !state.buildStack.length) return;
@@ -202,6 +270,7 @@
     sfx.click();
     renderProgram();
     updateControls();
+    updatePreview();
   }
   function undo() {
     if (state.running) return;
@@ -211,6 +280,7 @@
     sfx.click();
     renderProgram();
     updateControls();
+    updatePreview();
   }
   function clearProgram() {
     if (state.running) return;
@@ -219,6 +289,7 @@
     sfx.click();
     renderProgram();
     updateControls();
+    updatePreview();
   }
 
   var CMD_LABEL = { forward: "⬆️ 前进", left: "↰ 左转", right: "↱ 右转", cond: "🧱 墙→右转" };
@@ -306,6 +377,7 @@
     updateControls();
     els.runBtn.classList.add("hidden");
     els.stopBtn.classList.remove("hidden");
+    updatePreview();
     schedule(stepOnce, 250);
   }
 
@@ -322,6 +394,7 @@
     els.runBtn.classList.remove("hidden");
     els.stopBtn.classList.add("hidden");
     updateControls();
+    updatePreview();
   }
 
   function stepOnce() {
@@ -410,6 +483,7 @@
 
   function winLevel() {
     stopRun();
+    clearPreview(); /* 已到终点，不再显示预计路线 */
     var lv = level();
     var blocks = state.program.length;
     var stars = blocks <= lv.par ? 3 : (blocks <= lv.par + 3 ? 2 : 1);

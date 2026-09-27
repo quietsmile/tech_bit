@@ -3,6 +3,7 @@
   "use strict";
 
   var TIME_PER_QUESTION = 20;
+  var TIME_BONUS_ON_CLEAR = 20;
   var BASE_SCORE = 100;
   var COMBO_BONUS = 20;
   var TIME_BONUS_PER_SEC = 5;
@@ -23,6 +24,7 @@
     timerId: null,
     autoNextTimer: null,
     timeLeft: 0,
+    carriedTime: 0,
     soundOn: true,
     audioCtx: null
   };
@@ -96,6 +98,7 @@
       state.correct = 0;
       state.wrong = 0;
       state.skipped = 0;
+      state.carriedTime = 0;
     }
 
     el.startScreen.classList.add("hidden");
@@ -209,7 +212,10 @@
 
   function showQuestion() {
     state.answered = false;
-    state.timeLeft = TIME_PER_QUESTION;
+    /* 累计时间：第 1 关发 20 秒基础时间，之后每关 = 上一关答对时的剩余时间 + 20 秒 */
+    state.timeLeft = state.level === 1
+      ? TIME_PER_QUESTION
+      : state.carriedTime + TIME_BONUS_ON_CLEAR;
 
     var q = currentQuestion();
     el.qIndex.textContent = "第 " + state.level + " / " + EmojiQuestionBank.LEVEL_COUNT + " 关";
@@ -230,6 +236,11 @@
     el.emojiDisplay.classList.toggle("ultra-emoji", state.level >= 9);
 
     updateTimerDisplay();
+    el.timerChip.classList.remove("gain");
+    if (state.level > 1) {
+      void el.timerChip.offsetWidth;
+      el.timerChip.classList.add("gain");
+    }
     startTimer();
   }
 
@@ -322,6 +333,8 @@
     }
     updateProgress(isGood);
     if (isGood) {
+      /* 记录剩余时间，进入下一关时 +20 秒累计 */
+      state.carriedTime = state.timeLeft;
       /* 答对后自动进入下一关（按钮保留，可立即点击跳过等待） */
       clearTimeout(state.autoNextTimer);
       state.autoNextTimer = setTimeout(onNext, 1400);
@@ -342,8 +355,11 @@
       void el.combo.offsetWidth; // 重新触发动画
       el.combo.classList.add("bump");
       playCorrect();
+      var timeNote = state.level < EmojiQuestionBank.LEVEL_COUNT
+        ? " ⏱ 剩余 " + state.timeLeft + "s＋20s 带入下一关"
+        : "";
       finishQuestion(
-        "✅ 答对了！+" + gained + " 分（连击 x" + state.combo + "）",
+        "✅ 答对了！+" + gained + " 分（连击 x" + state.combo + "）" + timeNote,
         true,
         currentQuestion().explain
       );
