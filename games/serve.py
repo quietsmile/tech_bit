@@ -83,7 +83,12 @@ def relay_auto(game, token):
                 "role": "guest", "seat": room["guests"].index(token) + 1}
 
     # 房主离线超过 90 秒则释放房主位
-    if room["host_token"] and now - room.get("host_seen", 0) > 90:
+    if room["host_token"] and now - room.get("host_seen", 0) > 30:
+        room["guests"] = []
+        room["guest_seen"] = {}
+        room["state"] = None
+        room["version"] += 1
+        room["host_token"] = ""
         room["host_token"] = ""
 
     # 空缺的房主位：第一个没有主人的房间由他接管
@@ -395,7 +400,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if not token:
                         self.send_json({"ok": False, "error": "invalid-room"}, 403)
                         return
-                    room["inputs"].append(body.get("input"))
+                    room["inputs"].append({"token": token, "input": body.get("input")})
                     if len(room["inputs"]) > 80:
                         room["inputs"] = room["inputs"][-80:]
                     room["last_seen"] = time.time()
@@ -421,6 +426,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return
                 if action == "state":
                     room["state"] = body.get("state")
+                    room["host_seen"] = time.time()
                     room["version"] += 1
                     room["last_seen"] = time.time()
                     self.send_json({"ok": True, "version": room["version"]})

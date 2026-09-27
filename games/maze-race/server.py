@@ -251,6 +251,7 @@ def state(room, player_token):
         "ok": True,
         "code": room["code"],
         "phase": room["phase"],
+        "mode": room.get("mode", "versus"),
         "level": room["level"],
         "total_levels": len(LEVELS),
         "countdown": round(max(0, room.get("start_at", 0) - now), 2),
@@ -353,12 +354,37 @@ class Handler(BaseHTTPRequestHandler):
         code = str(body.get("code", "")).upper()
         token = str(body.get("player", ""))
         with LOCK:
+            if path == "/api/solo":
+                code = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=4))
+                room = {
+                    "code": code,
+                    "created": time.time(),
+                    "phase": "lobby",
+                    "mode": "solo",
+                    "players": {},
+                    "level": 0,
+                    "maze": None,
+                    "items": [],
+                    "start_at": 0,
+                    "level_started": 0,
+                    "level_elapsed": 0,
+                }
+                name = str(body.get("name", "")).strip()[:12] or "单人选手"
+                player = make_player(0, name)
+                token = "solo-" + random.randrange(10 ** 12).__str__()
+                player["token"] = token
+                room["players"][token] = player
+                ROOMS[code] = room
+                start_level(room, 0)
+                return self.send_json({"ok": True, "code": code, "player": token, "slot": 0, "mode": "solo"})
+
             if path == "/api/create":
                 code = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=4))
                 room = {
                     "code": code,
                     "created": time.time(),
                     "phase": "lobby",
+                    "mode": "versus",
                     "players": {},
                     "level": 0,
                     "maze": None,
@@ -379,6 +405,8 @@ class Handler(BaseHTTPRequestHandler):
                 # 单一联机房间：有未满的房间就加入，否则自动新建（玩家无感知）
                 target = None
                 for c, r in ROOMS.items():
+                    if r.get("mode") != "versus" and r["players"]:
+                        continue
                     if r["phase"] == "lobby" and len(r["players"]) < 6:
                         target = r
                         break
@@ -408,6 +436,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"ok": False, "error": "房间不存在"}, 404)
 
             if path == "/api/join":
+                if room.get("mode") == "solo":
+                    return self.send_json({"ok": False, "error": "单人挑战房间不能加入其他玩家"}, 403)
                 if len(room["players"]) >= 6:
                     return self.send_json({"ok": False, "error": "房间已满"}, 400)
                 name = str(body.get("name", "")).strip()[:12] or "玩家2"

@@ -9,6 +9,7 @@
   const gameCard = document.getElementById('gameCard');
   const nameInput = document.getElementById('nameInput');
   const joinBtn = document.getElementById('joinBtn');
+ const soloBtn = document.getElementById('soloBtn');
   const connectMsg = document.getElementById('connectMsg');
   const roomCodeEl = document.getElementById('roomCode');
   const playerPills = document.getElementById('playerPills');
@@ -61,6 +62,20 @@
     roomCodeEl.textContent = room;
   }
 
+  async function startSolo() {
+    const name = nameInput.value.trim() || '单人选手';
+    try {
+      const result = await api('/api/solo', { name });
+      if (!result.ok) throw new Error(result.error);
+      room = result.code; token = result.player;
+      localStorage.setItem('maze_race_room', room);
+      localStorage.setItem('maze_race_token_' + room, token);
+      showGame(); poll();
+    } catch (error) {
+      connectMsg.textContent = error.message || '单人模式启动失败';
+    }
+  }
+
   async function autoJoin() {
     const name = nameInput.value.trim() || ('小选手' + Math.floor(Math.random() * 90 + 10));
     try {
@@ -88,10 +103,10 @@
     }
     stateAt = performance.now();
 
-    const waiting = state.phase === 'lobby' || state.players.length < 2;
+    const waiting = state.phase === 'lobby' || (state.mode !== 'solo' && state.players.length < 2);
     if (waiting) {
-      overlayTitle.textContent = '等待玩家加入（2–6 人）';
-      overlayDesc.textContent = '把房间码发给小伙伴，人齐后点「开始比赛」。';
+      overlayTitle.textContent = state.mode === 'solo' ? '单人挑战已就绪' : '等待玩家加入（2–6 人）';
+      overlayDesc.textContent = state.mode === 'solo' ? '按方向键连续移动，先到 🏁 就完成。' : '把房间码发给小伙伴，人齐后点「开始比赛」。';
       overlayBtn.textContent = '▶ 开始比赛';
       overlayBtn.classList.remove('hidden');
       overlay.classList.remove('hidden');
@@ -143,7 +158,15 @@
   async function poll() {
     if (!room || !token) return;
     try {
-      const state = await api(`/api/state?code=${encodeURIComponent(room)}&player=${encodeURIComponent(token)}`);
+      const res = await fetch(`/api/state?code=${encodeURIComponent(room)}&player=${encodeURIComponent(token)}`);
+      if (res.status === 404) {
+        localStorage.removeItem('maze_race_room');
+        localStorage.removeItem('maze_race_token_' + room);
+        room = ''; token = ''; latest = null; connected = false;
+        showConnect('旧房间已失效，请点「🧍 单人挑战」重新开始。');
+        return;
+      }
+      const state = await res.json();
       if (!state.ok) throw new Error(state.error);
       connected = true;
       applyState(state);
@@ -224,6 +247,7 @@
   }
 
   joinBtn.addEventListener('click', autoJoin);
+ soloBtn.addEventListener('click', startSolo);
   addEventListener('keydown', event => {
     if (keyMap[event.code] === undefined) return;
     event.preventDefault();

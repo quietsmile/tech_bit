@@ -298,9 +298,10 @@
           startHostRound();
         }
         for (var i = 0; i < data.inputs.length; i++) {
-          var input = data.inputs[i];
-          if (!input || !input.dir || !input.token) continue;
-          var seatIdx = online.guests.indexOf(input.token) + 1;
+          var wrapped = data.inputs[i];
+          var input = wrapped && wrapped.input;
+          if (!input || !input.dir || !wrapped.token) continue;
+          var seatIdx = online.guests.indexOf(wrapped.token) + 1;
           var sn = seats[seatIdx];
           if (!sn || !sn.alive) continue;
           if (input.dir[0] !== -sn.dir.x || input.dir[1] !== -sn.dir.y) sn.nextDir = { x: input.dir[0], y: input.dir[1] };
