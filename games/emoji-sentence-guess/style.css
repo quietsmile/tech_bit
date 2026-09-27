@@ -184,6 +184,17 @@ header h1 {
   animation: pulse 0.8s infinite;
 }
 
+/* 通关加时：进入下一关时时间条闪烁提示累计时间 */
+.timer-chip.gain {
+  animation: timeGain 0.7s;
+}
+
+@keyframes timeGain {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.25); background: #43d475; }
+  100% { transform: scale(1); }
+}
+
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); }

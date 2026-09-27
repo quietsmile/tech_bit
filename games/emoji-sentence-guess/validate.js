@@ -48,7 +48,7 @@ for (let level = 1; level <= bank.LEVEL_COUNT; level++) {
   }
 }
 
-console.log("Emoji 20 关题库生成校验");
+console.log("Emoji 题库生成校验");
 console.log(`关卡：${bank.LEVEL_COUNT} 关`);
 console.log(`每关：${bank.QUESTIONS_PER_LEVEL} 题（已随机生成 10 轮校验）`);
 
