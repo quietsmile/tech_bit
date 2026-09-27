@@ -56,6 +56,7 @@
     #board .speed { color: #86efac; font-weight: 800; font-size: 13px; }
     #board .me { border-color: rgba(125,211,252,.45); background: rgba(56,189,248,.11); }
     #board .me .name { color: #fff; font-weight: 800; }
+    #board li.offline { opacity: .45; }
     #connection { margin-top: 8px; font-size: 11px; color: #7dd3fc; }
     #legend {
       position: fixed; z-index: 14; left: 12px; top: 58px;
@@ -299,8 +300,9 @@
     const achievementsList = document.getElementById("achievements-list");
 
     const WORLD = { width: 960, height: 600 };
+    const SESSION_KEY = "orbRushSession";
     let playerId = null;
-    let latest = { players: [], coins: [] };
+    let latest = { players: [], coins: [], leaderboard: [] };
     let renderedPlayers = new Map();
     const keys = new Set();
     let connected = false;
@@ -308,6 +310,8 @@
     let answering = false;
     let exitingWorld = false;
     let inputTimer, stateTimer;
+    let lastSentInput = { dx: 0, dy: 0, t: 0 };
+    let fetchingState = false;
 
     const VALUE_COLORS = ["", "#a3e635", "#22c55e", "#38bdf8", "#6366f1", "#a855f7", "#d946ef", "#f97316", "#fb7185", "#ef4444", "#fbbf24"];
     const CATEGORY = {
@@ -321,7 +325,8 @@
     homeButton.href = `${location.protocol}//${location.hostname}:8100/games/index.html`;
 
     function resize() {
-      const dpr = window.devicePixelRatio || 1;
+      /* 上限 1.5：Retina 全尺寸渲染是主要卡顿来源之一 */
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = innerWidth * dpr;
       canvas.height = innerHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -349,34 +354,62 @@
       return res.json();
     }
 
+    function activateSession(player) {
+      playerId = player.id;
+      overlay.classList.add("hidden");
+      hud.classList.remove("hidden");
+      legend.classList.remove("hidden");
+      share.classList.remove("hidden");
+      panelControls.classList.remove("hidden");
+      share.textContent = `邀请另一台 Mac：${location.href}`;
+      connection.textContent = "connected"; connected = true;
+      if (!inputTimer) inputTimer = setInterval(sendInput, 66);
+      if (!stateTimer) stateTimer = setInterval(fetchState, 90);
+    }
+
+    function saveSession(player, name) {
+      try { localStorage.setItem(SESSION_KEY, JSON.stringify({ id: player.id, secret: player.secret, name })); } catch (_) {}
+    }
+
     async function join(name) {
       joinButton.disabled = true; joinButton.textContent = "连接中…"; errorBox.textContent = "";
       try {
         const data = await post("/join", { name });
-        playerId = data.player.id;
-        overlay.classList.add("hidden");
-        hud.classList.remove("hidden");
-        legend.classList.remove("hidden");
-        share.classList.remove("hidden");
-        panelControls.classList.remove("hidden");
-        share.textContent = `邀请另一台 Mac：${location.href}`;
-        connection.textContent = "connected"; connected = true;
-        inputTimer = setInterval(sendInput, 66);
-        stateTimer = setInterval(fetchState, 66);
+        saveSession(data.player, name);
+        activateSession(data.player);
       } catch (e) {
         errorBox.textContent = "连接失败，请确认服务器还在运行。";
         joinButton.disabled = false; joinButton.textContent = "进入游戏";
       }
     }
 
+    /* 刷新/重开页面后自动找回原角色（服务器保留 180 秒） */
+    async function tryResume() {
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch (_) {}
+      if (!saved || !saved.id || !saved.secret) return;
+      try {
+        const data = await post("/resume", { id: saved.id, secret: saved.secret });
+        activateSession(data.player);
+      } catch (_) {
+        try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+      }
+    }
+
     async function sendInput() {
       if (!playerId) return;
-      try { await post("/input", { id: playerId, ...inputVector() }); }
+      /* 方向没变就不发，只保留 500ms 心跳，减少一半以上请求 */
+      const v = inputVector();
+      const now = performance.now();
+      if (v.dx === lastSentInput.dx && v.dy === lastSentInput.dy && now - lastSentInput.t < 500) return;
+      lastSentInput = { dx: v.dx, dy: v.dy, t: now };
+      try { await post("/input", { id: playerId, ...v }); }
       catch (_) { connected = false; }
     }
 
     async function fetchState() {
-      if (!playerId) return;
+      if (!playerId || fetchingState) return;
+      fetchingState = true;
       try {
         const res = await fetch(`/state?id=${playerId}&t=${Date.now()}`, { cache: "no-store" });
         latest = await res.json();
@@ -389,6 +422,7 @@
         syncPlayers(); syncQuiz(); syncFeedback();
         syncAchievements();
       } catch (_) { connected = false; }
+      finally { fetchingState = false; }
     }
 
     function syncPlayers() {
@@ -546,6 +580,7 @@
     }
 
     function drawPortals(time) {
+      const cooldown = latest.portal_cooldown || 0;
       for (const world of latest.worlds || []) {
         const pulse = Math.sin(time / 260 + world.id.charCodeAt(1)) * 3;
         ctx.beginPath(); ctx.arc(world.x, world.y, world.radius + pulse + 12, 0, Math.PI * 2);
@@ -563,6 +598,11 @@
         ctx.fillText(world.short, world.x, world.y + 10);
         ctx.font = "700 10px -apple-system, PingFang SC, sans-serif"; ctx.fillStyle = "rgba(226,240,255,.82)";
         ctx.fillText(`${world.label} · ≤${world.direct_max}分直接`, world.x, world.y - world.radius - 9);
+        if (cooldown > 0) {
+          ctx.fillStyle = "rgba(252,165,165,.95)";
+          ctx.font = "800 10px -apple-system, PingFang SC, sans-serif";
+          ctx.fillText(`入口冷却 ${cooldown.toFixed(1)}s`, world.x, world.y + world.radius + 12);
+        }
       }
     }
 
@@ -597,32 +637,6 @@
       ctx.fillText(`${coin.value}分 · ${cat.label}`, coin.x, coin.y - r - 8);
     }
 
-    function drawTail(p) {
-      const tail = p.tail || [];
-      if (!tail.length) return;
-
-      ctx.lineJoin = "round"; ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      for (const seg of tail) ctx.lineTo(seg.x, seg.y);
-      ctx.setLineDash([7, 6]);
-      ctx.lineWidth = Math.max(3, p.radius * .38);
-      ctx.strokeStyle = `${p.color}42`;
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      tail.forEach((seg, index) => {
-        const radius = seg.radius || p.radius * .48;
-        const alpha = Math.max(.06, .22 - (index / tail.length) * .16);
-        ctx.globalAlpha = alpha;
-        ctx.beginPath(); ctx.arc(seg.x, seg.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color; ctx.fill();
-        ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
-        ctx.strokeStyle = p.color; ctx.stroke(); ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      });
-    }
-
     function render() {
       const view = fitWorld();
       drawBackground(view);
@@ -630,40 +644,70 @@
       if (!latest.active_world) drawPortals(performance.now());
       for (const coin of latest.coins || []) drawCoin(coin, performance.now());
 
-      for (const p of renderedPlayers.values()) {
+      /* 大的先画在底层、小的后画，自己永远最后画，保证不被别人盖住 */
+      const drawList = [...renderedPlayers.values()].sort((a, b) => (b.radius || 0) - (a.radius || 0));
+      for (const p of drawList) {
         const target = (latest.players || []).find(sp => sp.id === p.id);
         if (target) { p.x += (target.x - p.x) * .22; p.y += (target.y - p.y) * .22; }
-        const radius = p.radius || 14;
-        drawTail(p);
-        ctx.beginPath(); ctx.arc(p.x, p.y, radius + 12, 0, Math.PI * 2);
-        ctx.fillStyle = p.id === playerId ? `${p.color}22` : "rgba(255,255,255,.035)"; ctx.fill();
-        ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color; ctx.fill(); ctx.lineWidth = 3;
-        ctx.strokeStyle = p.id === playerId ? "#fff" : "rgba(255,255,255,.7)"; ctx.stroke();
-        ctx.font = "700 13px -apple-system, PingFang SC, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = "#dbeafe"; ctx.fillText(`${p.name} · ${p.score}分`, p.x, p.y - radius - 12);
-        ctx.fillStyle = "#9fb6cc"; ctx.font = "600 10px -apple-system, PingFang SC, sans-serif";
-        ctx.fillText(`速度 ${p.speed} · 大小 ${Math.round((p.size || 1) * 100)}% · 尾长 ${(p.tailLength || 0).toFixed(1)}`, p.x, p.y + radius + 20);
       }
+      for (const p of drawList) if (p.id !== playerId) drawPlayerBody(p, false);
+      const me = drawList.find(p => p.id === playerId);
+      if (me) drawPlayerBody(me, true);
+      /* 名字和属性文字第二遍统一绘制，不会被其他玩家的身体压住 */
+      for (const p of drawList) drawPlayerLabel(p);
       ctx.restore();
 
       if (!connected) {
         ctx.fillStyle = "rgba(248,113,113,.85)"; ctx.font = "600 13px -apple-system, sans-serif"; ctx.textAlign = "center";
         ctx.fillText("连接断开，正在重试…", innerWidth / 2, 28);
       }
+      updateBoard();
+      requestAnimationFrame(render);
+    }
 
-      const sorted = [...(latest.players || [])].sort((a, b) => b.speed - a.speed || b.score - a.score || b.eaten - a.eaten || a.id - b.id);
-      board.innerHTML = sorted.slice(0, 8).map((p, index) => `
-        <li class="${p.id === playerId ? "me" : ""}">
+    function drawPlayerBody(p, isMe) {
+      const radius = p.radius || 14;
+      ctx.globalAlpha = p.online === false ? .32 : 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, radius + 12, 0, Math.PI * 2);
+      ctx.fillStyle = isMe ? `${p.color}22` : "rgba(255,255,255,.035)"; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color; ctx.fill(); ctx.lineWidth = 3;
+      ctx.strokeStyle = isMe ? "#fff" : "rgba(255,255,255,.7)"; ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawPlayerLabel(p) {
+      const radius = p.radius || 14;
+      const offline = p.online === false;
+      ctx.globalAlpha = offline ? .55 : 1;
+      ctx.font = "700 13px -apple-system, PingFang SC, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#dbeafe";
+      ctx.fillText(`${p.name} · ${p.score}分${offline ? " · 离线" : ""}`, p.x, p.y - radius - 12);
+      ctx.fillStyle = "#9fb6cc"; ctx.font = "600 10px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText(`速度 ${p.speed} · 大小 ${Math.round((p.size || 1) * 100)}% · 尾长 ${(p.tailLength || 0).toFixed(1)}`, p.x, p.y + radius + 20);
+      ctx.globalAlpha = 1;
+    }
+
+    /* 排行榜：数据指纹变化且距上次刷新超过 500ms 才更新 DOM（原来每帧重建，是卡顿主因） */
+    let boardSig = "";
+    let boardLastUpdate = 0;
+    function updateBoard() {
+      const list = latest.leaderboard || latest.players || [];
+      const sig = list.map(p => [p.id, p.score, p.speed, p.eaten, p.online === false ? 0 : 1, p.in_world ? 1 : 0, (p.achievements || []).length].join(":")).join("|");
+      const now = performance.now();
+      if (sig === boardSig || now - boardLastUpdate < 500) return;
+      boardSig = sig; boardLastUpdate = now;
+      const sorted = [...list].sort((a, b) => b.speed - a.speed || b.score - a.score || b.eaten - a.eaten || a.id - b.id);
+      board.innerHTML = sorted.map((p, index) => `
+        <li class="${p.id === playerId ? "me" : ""}${p.online === false ? " offline" : ""}">
           <span class="rank">${index + 1}</span>
-          <span class="name">${escapeHtml(p.name)}</span>
+          <span class="name">${escapeHtml(p.name)}${p.in_world ? " 🌍" : ""}</span>
           <span class="speed">${p.speed}</span>
-          <span class="metrics">速度 · ${p.score}分 · 吃了${p.eaten || 0}个 · 尾长${(p.tailLength || 0).toFixed(1)} · 🏅${(p.achievements || []).length}</span>
+          <span class="metrics">速度 · ${p.score}分 · 吃了${p.eaten || 0}个 · 尾长${(p.tailLength || 0).toFixed(1)} · 🏅${(p.achievements || []).length}${p.online === false ? " · 离线" : ""}</span>
         </li>
       `).join("");
       const winner = sorted[0];
       connection.textContent = winner && winner.score >= 50 ? `${winner.name} wins!` : (connected ? "connected" : "offline");
-      requestAnimationFrame(render);
     }
 
     function escapeHtml(value) {
@@ -712,6 +756,7 @@
     addEventListener("beforeunload", () => {
       if (playerId) navigator.sendBeacon("/leave", new Blob([JSON.stringify({ id: playerId })], { type: "application/json" }));
     });
+    tryResume();
     requestAnimationFrame(render);
   </script>
 </body>
