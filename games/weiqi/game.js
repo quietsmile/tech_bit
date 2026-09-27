@@ -6,12 +6,33 @@
 
   var N = 9;
   var KOMI = 5.5;
+  var aiLevel = document.getElementById('aiLevel').value || 'normal';
   var board, current, passes, captures, history, koStr, gameOver, mode;
   var lastMove = null; // {r,c} 或 'pass'
 
   var canvas = document.getElementById('board');
   var ctx = canvas.getContext('2d');
-  var M = 25, C = (canvas.width - M * 2) / (N - 1);
+  var M = 25, C = 50;
+
+  function resizeCanvas() {
+    C = N <= 9 ? 50 : N <= 13 ? 38 : 30;
+    var size = M * 2 + C * (N - 1);
+    canvas.width = size;
+    canvas.height = size;
+  }
+
+  function starPoints(n) {
+    if (n === 9) return [[2, 2], [6, 2], [2, 6], [6, 6], [4, 4]];
+    if (n === 13) return [[3, 3], [9, 3], [3, 9], [9, 9], [6, 6]];
+    var e = 3, m = n - 4, mid = n >> 1;
+    var pts = [[e, e], [e, m], [m, e], [m, m], [e, mid], [mid, e], [mid, m], [m, mid], [mid, mid]];
+    var seen = {}, out = [];
+    pts.forEach(function (p2) {
+      var k = p2[0] + ',' + p2[1];
+      if (!seen[k]) { seen[k] = 1; out.push(p2); }
+    });
+    return out;
+  }
   var scoreEl = document.getElementById('scoreInfo');
   var turnEl = document.getElementById('turnInfo');
   var capEl = document.getElementById('capInfo');
@@ -72,6 +93,9 @@
   /* ---------- 游戏状态 ---------- */
   function newGame(m) {
     mode = m;
+    N = Number(document.getElementById('boardSize').value) || 9;
+    aiLevel = document.getElementById('aiLevel').value || 'normal';
+    resizeCanvas();
     board = Array.from({ length: N }, function () { return Array(N).fill(0); });
     current = 1;
     passes = 0;
@@ -121,14 +145,32 @@
   }
 
   /* ---------- 简单人机（白） ---------- */
+  var AI_LEVELS = {
+    easy:   { capW: 60,  atariW: 15, escapeW: 30, nearW: 10, starW: 3, noise: 70, lookahead: false },
+    normal: { capW: 130, atariW: 40, escapeW: 70, nearW: 14, starW: 6, noise: 14, lookahead: false },
+    hard:   { capW: 150, atariW: 60, escapeW: 110, nearW: 16, starW: 8, noise: 0, lookahead: true }
+  };
+
+  /* 困难 AI 防守预判：对手在局面上的最强一手提子数 */
+  function bestOppCapture(bd) {
+    var best = 0;
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+      if (bd[r][c] !== 0) continue;
+      var res = tryPlace(bd, r, c, 1, koStr);
+      if (res.legal && res.captured > best) best = res.captured;
+    }
+    return best;
+  }
+
   function aiMove() {
     if (gameOver) return;
+    var cfg = AI_LEVELS[aiLevel] || AI_LEVELS.normal;
     var best = null, bestScore = -Infinity;
     for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
       if (board[r][c] !== 0) continue;
       var res = tryPlace(board, r, c, 2, koStr);
       if (!res.legal) continue;
-      var score = res.captured * 120;
+      var score = res.captured * cfg.capW;
       // 打吃：让黑群只剩 1 气
       var oppAtari = 0;
       neighbors(r, c).forEach(function (n) {
@@ -143,15 +185,18 @@
           });
         }
       });
-      score += oppAtari * 35;
-      // 逃气：自己相邻棋群只剩 1 气，落子后气增多
-      var nearOwn = 0, nearAny = 0;
+      score += oppAtari * cfg.atariW;
+      var nearAny = 0;
       neighbors(r, c).forEach(function (n) {
-        if (board[n[0]][n[1]] !== 0) { nearAny++; nearOwn += (board[n[0]][n[1]] === 2 ? 1 : 0); }
+        if (board[n[0]][n[1]] !== 0) nearAny++;
       });
       score += nearAny * 6;
-      score += (r === 2 || r === 4 || r === 6) && (c === 2 || c === 4 || c === 6) ? 4 : 0; // 星位附近
-      score += Math.random() * 8;
+      score += (r === 2 || r === 4 || r === 6) && (c === 2 || c === 4 || c === 6) ? cfg.starW : 0; // 星位附近
+      score += Math.random() * cfg.noise;
+      // 困难：预判对手最强的立即提子反击
+      if (cfg.lookahead) {
+        score -= bestOppCapture(res.board) * 90;
+      }
       if (score > bestScore) { bestScore = score; best = { r: r, c: c }; }
     }
     if (!best) { doPass(); return; }
@@ -213,7 +258,7 @@
       ctx.stroke();
     }
     // 星位
-    [[2, 2], [6, 2], [2, 6], [6, 6], [4, 4]].forEach(function (p) {
+    starPoints(N).forEach(function (p) {
       ctx.beginPath();
       ctx.arc(M + p[0] * C, M + p[1] * C, 3.2, 0, Math.PI * 2);
       ctx.fillStyle = '#5a3c1a';
@@ -254,6 +299,8 @@
   /* 供单元测试使用 */
   if (typeof window !== 'undefined') window.WeiqiRules = { tryPlace, groupInfo, keyOf, N: N };
 
+  document.getElementById('boardSize').addEventListener('change', function () { newGame(mode); });
+  document.getElementById('aiLevel').addEventListener('change', function () { aiLevel = document.getElementById('aiLevel').value; });
   document.getElementById('passBtn').addEventListener('click', doPass);
   document.getElementById('restartBtn').addEventListener('click', function () { newGame(mode); });
   document.getElementById('modeAi').addEventListener('click', function () { setMode('ai'); });

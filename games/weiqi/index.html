@@ -23,6 +23,8 @@
   .mode-row { display: flex; gap: 10px; margin-bottom: 10px; }
   .mode-row button { padding: 8px 18px; border-radius: 999px; border: 1px solid rgba(74,222,128,.4); background: #0d2416; color: #d8f3e0; cursor: pointer; font-weight: 700; }
   .mode-row button.active { background: #4ade80; color: #052012; }
+  .opt-row { display: flex; gap: 14px; justify-content: center; margin-bottom: 10px; font-size: 0.95rem; }
+  .opt-row select { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(74,222,128,.35); background: #0d2416; color: #e8f2ea; }
   #board { background: #dcb35c; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-width: 94vw; cursor: pointer; }
   .info-row { display: flex; gap: 18px; margin: 10px 0 4px; font-size: 1rem; }
   .info-row b { color: #4ade80; }
@@ -44,6 +46,22 @@
   <div class="mode-row">
     <button id="modeAi" class="active">人机对弈（执黑）</button>
     <button id="modePvp">双人对弈（同屏）</button>
+  </div>
+  <div class="opt-row">
+    <label>棋盘大小
+      <select id="boardSize">
+        <option value="9" selected>9 路（入门）</option>
+        <option value="13">13 路（进阶）</option>
+        <option value="19">19 路（标准）</option>
+      </select>
+    </label>
+    <label>AI 难度
+      <select id="aiLevel">
+        <option value="easy">简单</option>
+        <option value="normal" selected>普通</option>
+        <option value="hard">困难</option>
+      </select>
+    </label>
   </div>
   <div class="info-row">
     <span id="turnInfo">黑方行棋</span>
