@@ -80,3 +80,7 @@ button:hover { background: #5d4730; }
 }
 .badge { font-size: 22px; font-weight: 800; color: #fde047; }
 .badge-note { margin: 6px 0 0; font-size: 12px; color: #9fb3c8; }
+
+/* 上一步走棋位置标记 */
+.last-from { fill: rgba(245, 158, 11, 0.16); stroke: #d97706; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.last-to { fill: rgba(245, 158, 11, 0.34); stroke: #b45309; stroke-width: 2; }

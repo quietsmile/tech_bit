@@ -5,6 +5,7 @@ const CHAR = {
 };
 
 let board, turn, selected, history, gameOver;
+let lastMove = null; // 对方上一步：{from, to}
 let mode = null; // 'ai' | 'pvp'
 let difficulty = 'normal';
 let aiThinking = false;
@@ -27,6 +28,7 @@ function newGame() {
   turn = 'red';
   selected = null;
   history = [];
+  lastMove = null;
   gameOver = false;
   clearHints();
   updateStatus();
@@ -58,6 +60,7 @@ function scheduleAiMove() {
       if (!move || gameOver) return;
       history.push({ board, turn, from: [move.fr, move.fc], to: [move.tr, move.tc], ai: true });
       board = applyMove(board, move.fr, move.fc, move.tr, move.tc);
+      lastMove = { from: [move.fr, move.fc], to: [move.tr, move.tc] };
       turn = 'red';
       clearHints();
       render();
@@ -87,6 +90,7 @@ function onBoardClick(evt) {
     if (legalMoves(board, sr, sc).some(([mr, mc]) => mr === r && mc === c)) {
       history.push({board, turn, from:[sr,sc], to:[r,c]});
       board = applyMove(board, sr, sc, r, c);
+      lastMove = { from: [sr, sc], to: [r, c] };
       turn = turn === 'red' ? 'black' : 'red';
       selected = null;
       clearHints();
@@ -155,6 +159,7 @@ function undo() {
     last = history.pop();
   }
   board = last.board; turn = last.turn; selected = null; gameOver = false; aiThinking = false;
+  lastMove = last.from ? { from: last.from, to: last.to } : null;
   aiToken++; // 取消尚未执行的电脑走子
   clearHints(); render(); updateStatus();
 }
@@ -240,6 +245,19 @@ function showHints(moves) {
 function render() {
   const svg = document.getElementById('board');
   document.querySelectorAll('.piece').forEach(e => e.remove());
+    document.querySelectorAll('.last-from, .last-to').forEach(e => e.remove());
+    if (lastMove) {
+    [['from', lastMove.from], ['to', lastMove.to]].forEach(function (item) {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', MARGIN + item[1][1] * CELL - (CELL - 6) / 2);
+      rect.setAttribute('y', MARGIN + item[1][0] * CELL - (CELL - 6) / 2);
+      rect.setAttribute('width', CELL - 6);
+      rect.setAttribute('height', CELL - 6);
+      rect.setAttribute('rx', 10);
+      rect.setAttribute('class', item[0] === 'from' ? 'last-from' : 'last-to');
+      svg.appendChild(rect);
+    });
+  }
   for (let r = 0; r < 10; r++) for (let c = 0; c < 9; c++) {
     const p = board[r][c];
     if (!p) continue;
