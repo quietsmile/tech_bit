@@ -11,6 +11,7 @@
 
   var scoreEl = document.getElementById('score');
   var bestEl = document.getElementById('best');
+  var rankListEl = document.getElementById('rankList');
   var oppWrap = document.getElementById('oppWrap');
   var oppScoreEl = document.getElementById('oppScore');
   var roomChip = document.getElementById('roomChip');
@@ -50,6 +51,7 @@
     { body: '#c084fc', head: '#e9d5ff' },
     { body: '#fb923c', head: '#fed7aa' }
   ];
+  var SEAT_NAMES = ['绿蛇', '蓝蛇', '黄蛇', '粉蛇', '紫蛇', '橙蛇'];
   var SPAWNS = [
     { cells: [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }], dir: { x: 1, y: 0 } },
     { cells: [{ x: 10, y: 4 }, { x: 11, y: 4 }, { x: 12, y: 4 }], dir: { x: -1, y: 0 } },
@@ -264,6 +266,12 @@
     var bestOther = 0;
     for (i = 1; i < seats.length; i++) bestOther = Math.max(bestOther, seats[i].score);
     oppScoreEl.textContent = bestOther;
+    if (rankListEl) {
+      rankListEl.classList.remove('hidden');
+      rankListEl.textContent = '实时排名：' + seats
+        .map(function (sn, idx) { return SEAT_NAMES[idx] + ' ' + sn.score + ' 分' + (sn.alive ? '' : '（淘汰）'); })
+        .join(' · ');
+    }
 
     var anyAlive = seats.some(function (s) { return s.alive; });
     if (!anyAlive) {
@@ -393,6 +401,12 @@
         });
         scoreEl.textContent = mine.score;
         oppScoreEl.textContent = bestOther;
+        if (rankListEl) {
+          rankListEl.classList.remove('hidden');
+          rankListEl.textContent = '实时排名：' + scene.snakes
+            .map(function (sn, idx) { return SEAT_NAMES[idx] + ' ' + sn.score + ' 分' + (sn.alive ? '' : '（淘汰）'); })
+            .join(' · ');
+        }
         if (scene.status === 'over') {
           var ranking = scene.snakes.map(function (sn, idx) {
             return (idx + 1) + '号 ' + sn.score + ' 分';
@@ -441,6 +455,7 @@
     oppWrap.classList.add('hidden');
     roomChip.classList.add('hidden');
     if (online.pollTimer) clearInterval(online.pollTimer);
+    if (rankListEl) rankListEl.classList.add('hidden');
     start();
   });
   document.getElementById('btnOnline').addEventListener('click', function () {

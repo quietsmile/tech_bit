@@ -99,6 +99,7 @@
     <span id="oppWrap" class="hidden">对手分：<b id="oppScore">0</b></span>
     <span>最高分：<b id="best">0</b></span>
   </div>
+  <div id="rankList" class="rank-list hidden"></div>
   <canvas id="board" width="400" height="400"></canvas>
   <div class="controls">
     <button id="pauseBtn">暂停</button>
@@ -135,6 +136,8 @@
       display: flex; align-items: center; justify-content: center;
     }
     #menu.hidden2 { display: none; }
+    .rank-list { font-size: 0.9rem; color: #9fb4c9; margin-bottom: 8px; min-height: 1.2em; text-align: center; }
+    .rank-list b { color: #7bd88f; }
     .menu-panel {
       width: min(88vw, 340px); padding: 28px 26px; text-align: center;
       background: #141826; border: 1px solid #3a4256; border-radius: 18px;
