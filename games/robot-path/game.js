@@ -478,7 +478,18 @@
   }
   function failRun(msg) {
     stopRun();
+    resetRobot();
     showFeedback("no", msg);
+  }
+
+  /* 失败后机器人回到本关起点（已收集的宝箱和得分保留） */
+  function resetRobot() {
+    var lv = level();
+    rt.robot = { x: lv.start.x, y: lv.start.y, d: lv.start.d, rot: lv.start.d * 90 };
+    var body = robotEl() && robotEl().querySelector(".robot-body");
+    if (body) body.classList.remove("bump", "fall");
+    placeRobot(true);
+    updatePreview();
   }
 
   function winLevel() {
