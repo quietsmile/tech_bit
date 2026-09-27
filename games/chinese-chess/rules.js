@@ -159,8 +159,8 @@ function hasAnyLegalMove(board, side) {
 
 function boardText(board) {
   const CN = {
-    red: {chariot:'车', horse:'马', elephant:'相', advisor:'仕', general:'帅', cannon:'炮', pawn:'兵'},
-    black: {chariot:'车', horse:'马', elephant:'象', advisor:'士', general:'将', cannon:'炮', pawn:'卒'}
+    red: {chariot:'俥', horse:'傌', elephant:'相', advisor:'仕', general:'帅', cannon:'炮', pawn:'兵'},
+    black: {chariot:'車', horse:'馬', elephant:'象', advisor:'士', general:'將', cannon:'砲', pawn:'卒'}
   };
   return board.map((row, r) =>
     (9 - r) + ' ' + row.map(p => p ? CN[p.side][p.type] : '·').join(' ')

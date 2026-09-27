@@ -1,4 +1,4 @@
-/* 中国象棋简易 AI：minimax + alpha-beta，纯 JS，使用 rules.js 的合法走法 */
+/* 中国象棋 AI：negamax + alpha-beta + 迭代加深 + 吃子静态搜索（纯 JS，使用 rules.js） */
 
 const AI_PIECE_VALUE = {
   general: 10000, chariot: 900, cannon: 450, horse: 400,
@@ -42,7 +42,7 @@ function aiEvaluate(board) {
       if (p.type === 'horse') v += p.side === 'red' ? AI_HORSE_PST[r][c] : AI_HORSE_PST[9 - r][c];
       score += p.side === 'red' ? v : -v;
     }
-  return score; // 黑方 AI 希望分数越小越好
+  return score; // 红方视角：红正黑负
 }
 
 function aiAllMoves(board, side) {
@@ -56,55 +56,114 @@ function aiAllMoves(board, side) {
   return moves;
 }
 
-function aiSearch(board, depth, alpha, beta, side /*将要行棋的一方*/) {
+/* MVV-LVA：吃子价值排序（先吃大子、用小子吃） */
+function aiVictimValue(board, m) {
+  const v = board[m.tr][m.tc];
+  if (!v) return 0;
+  const attacker = board[m.fr][m.fc];
+  return AI_PIECE_VALUE[v.type] * 10 - (attacker ? AI_PIECE_VALUE[attacker.type] : 0);
+}
+
+/* 行棋方视角评估（negamax 约定） */
+function aiEvalSide(board, side) {
+  const s = aiEvaluate(board);
+  return side === 'red' ? s : -s;
+}
+
+let aiNodes = 0;
+let aiDeadline = 0;
+let aiTimeUp = false;
+const AI_NODE_LIMIT = 600000;
+
+/* negamax：返回「行棋方视角」的分值 */
+function aiNegamax(board, depth, alpha, beta, side, qdepth) {
   aiNodes++;
-  if (aiNodes > AI_NODE_LIMIT) return aiEvaluate(board);
-  if (!findGeneral(board, side)) return side === 'black' ? 99999 : -99999;
-  if (depth === 0) return aiEvaluate(board);
-  const maximizing = side === 'black';
-  let best = maximizing ? -Infinity : Infinity;
+  if (aiNodes > AI_NODE_LIMIT || Date.now() > aiDeadline) aiTimeUp = true;
+  if (aiTimeUp) return aiEvalSide(board, side);
+
+  if (!findGeneral(board, side)) return -(99000 + depth);   // 己方无将：必败
   const moves = aiAllMoves(board, side);
-  if (!moves.length) return maximizing ? -99999 : 99999;
-  // 吃子优先，改善剪枝
-  moves.sort((a, b) => {
-    const va = board[a.tr][a.tc] ? AI_PIECE_VALUE[board[a.tr][a.tc].type] : 0;
-    const vb = board[b.tr][b.tc] ? AI_PIECE_VALUE[board[b.tr][b.tc].type] : 0;
-    return vb - va;
-  });
-  for (const m of moves) {
-    const nb = applyMove(board, m.fr, m.fc, m.tr, m.tc);
-    const v = aiSearch(nb, depth - 1, alpha, beta, side === 'red' ? 'black' : 'red');
-    if (maximizing) {
-      best = Math.max(best, v);
-      alpha = Math.max(alpha, v);
-    } else {
-      best = Math.min(best, v);
-      beta = Math.min(beta, v);
+  if (!moves.length) return -(99000 + depth);               // 困毙：判负
+
+  if (depth <= 0) {
+    if (qdepth <= 0) return aiEvalSide(board, side);
+    /* 静态搜索：估值打底，只延伸吃子，消除地平线效应 */
+    let best = aiEvalSide(board, side);
+    if (best >= beta) return best;
+    if (best > alpha) alpha = best;
+    const caps = moves
+      .filter(m => board[m.tr][m.tc])
+      .sort((a, b) => aiVictimValue(board, b) - aiVictimValue(board, a));
+    for (const m of caps) {
+      const nb = applyMove(board, m.fr, m.fc, m.tr, m.tc);
+      const v = -aiNegamax(nb, 0, -beta, -alpha, side === 'red' ? 'black' : 'red', qdepth - 1);
+      if (v > best) best = v;
+      if (v > alpha) alpha = v;
+      if (alpha >= beta) break;
     }
-    if (beta <= alpha) break;
+    return best;
+  }
+
+  /* 吃子优先排序，改善剪枝 */
+  const order = moves
+    .map((m, idx) => [idx, aiVictimValue(board, m)])
+    .sort((a, b) => b[1] - a[1]);
+  let best = -Infinity;
+  for (const [idx] of order) {
+    const m = moves[idx];
+    const nb = applyMove(board, m.fr, m.fc, m.tr, m.tc);
+    const v = -aiNegamax(nb, depth - 1, -beta, -alpha, side === 'red' ? 'black' : 'red', qdepth);
+    if (v > best) best = v;
+    if (v > alpha) alpha = v;
+    if (alpha >= beta) break;
+    if (aiTimeUp) break;
   }
   return best;
 }
 
-let aiNodes = 0;
-const AI_NODE_LIMIT = 400000; // 节点上限，避免深层搜索卡顿
-const AI_DEPTH = { easy: 2, normal: 3, hard: 4 };
+/* 难度配置：搜索深度 / 时间预算 / 静态搜索层数 / 候选随机幅度 */
+const AI_CONFIG = {
+  easy:   { depth: 2, timeMs: 400,  qdepth: 0, noise: 250 },
+  normal: { depth: 3, timeMs: 900,  qdepth: 4, noise: 40 },
+  hard:   { depth: 6, timeMs: 1800, qdepth: 6, noise: 0 }
+};
 
 function aiChooseMove(board, difficulty) {
-  aiNodes = 0;
+  const cfg = AI_CONFIG[difficulty] || AI_CONFIG.normal;
+  aiNodes = 0; aiTimeUp = false;
+  aiDeadline = Date.now() + cfg.timeMs;
+
   const moves = aiAllMoves(board, 'black');
   if (!moves.length) return null;
-  const depth = AI_DEPTH[difficulty] || 2;
-  const scored = moves.map(m => ({
-    move: m,
-    score: aiSearch(applyMove(board, m.fr, m.fc, m.tr, m.tc), depth - 1, -Infinity, Infinity, 'red')
-  })).sort((a, b) => a.score - b.score); // 黑方最小化红方视角分数
-  if (difficulty === 'easy') {
-    // 从前三优中随机，降低强度
-    const pool = scored.slice(0, Math.min(3, scored.length));
-    return pool[Math.floor(Math.random() * pool.length)].move;
+
+  /* 根节点吃子优先排序 */
+  moves.sort((a, b) => aiVictimValue(board, b) - aiVictimValue(board, a));
+
+  var bestMove = moves[0];
+  /* 迭代加深：从浅到深，时间到就用上一轮完整结果 */
+  for (var depth = 2; depth <= cfg.depth; depth++) {
+    var alpha = -Infinity, beta = Infinity;
+    var localBest = null, localBestV = -Infinity;
+    var nearBest = [];
+    var aborted = false;
+
+    for (var i = 0; i < moves.length; i++) {
+      var m = moves[i];
+      var nb = applyMove(board, m.fr, m.fc, m.tr, m.tc);
+      var v = -aiNegamax(nb, depth - 1, -beta, -alpha, 'red', cfg.qdepth);
+      if (aiTimeUp) { aborted = true; break; }
+      if (v > localBestV) { localBestV = v; localBest = m; nearBest = [m]; }
+      else if (v === localBestV) nearBest.push(m);
+      else if (localBestV - v <= cfg.noise) nearBest.push(m);
+      if (v > alpha) alpha = v;
+    }
+
+    if (localBest) {
+      bestMove = nearBest.length
+        ? nearBest[Math.floor(Math.random() * nearBest.length)]
+        : localBest;
+    }
+    if (aborted) break; /* 时间耗尽：用上一轮完整结果 */
   }
-  const best = scored[0].score;
-  const top = scored.filter(s => s.score <= best + (difficulty === 'normal' ? 15 : 0));
-  return top[Math.floor(Math.random() * top.length)].move;
+  return bestMove;
 }

@@ -1,7 +1,7 @@
 /* 中国象棋界面与对局控制 */
 const CHAR = {
-  red: {chariot:'车', horse:'马', elephant:'相', advisor:'仕', general:'帅', cannon:'炮', pawn:'兵'},
-  black: {chariot:'车', horse:'马', elephant:'象', advisor:'士', general:'将', cannon:'炮', pawn:'卒'}
+  red: {chariot:'俥', horse:'傌', elephant:'相', advisor:'仕', general:'帅', cannon:'炮', pawn:'兵'},
+  black: {chariot:'車', horse:'馬', elephant:'象', advisor:'士', general:'將', cannon:'砲', pawn:'卒'}
 };
 
 let board, turn, selected, history, gameOver;

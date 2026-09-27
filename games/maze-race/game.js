@@ -157,28 +157,35 @@
 
   async function poll() {
     if (!room || !token) return;
+    const requestRoom = room;
+    const requestToken = token;
     try {
-      const res = await fetch(`/api/state?code=${encodeURIComponent(room)}&player=${encodeURIComponent(token)}`);
+      const res = await fetch(`${API_BASE}/api/state?code=${encodeURIComponent(requestRoom)}&player=${encodeURIComponent(requestToken)}`);
       if (res.status === 404) {
-        localStorage.removeItem('maze_race_room');
-        localStorage.removeItem('maze_race_token_' + room);
-        room = ''; token = ''; latest = null; connected = false;
-        showConnect('旧房间已失效，请点「🧍 单人挑战」重新开始。');
+        if (requestRoom === room) {
+          localStorage.removeItem('maze_race_room');
+          localStorage.removeItem('maze_race_token_' + room);
+          room = ''; token = ''; latest = null; connected = false;
+          showConnect('旧房间已失效，请点「🧍 单人挑战」重新开始。');
+        }
         return;
       }
       const state = await res.json();
       if (!state.ok) throw new Error(state.error);
+      if (requestRoom !== room) return;
       connected = true;
       applyState(state);
     } catch (_) {
-      connected = false;
-      statusEl.textContent = '连接断开，正在重试…';
+      if (requestRoom === room) {
+        connected = false;
+        statusEl.textContent = '连接断开，正在重试…';
+      }
     }
   }
 
   async function sendInput() {
     if (!room || !token) return;
-    try { await api('/api/input', { code: room, player: token, input }); } catch (_) {}
+    try { await api(`${API_BASE}/api/input`, { code: room, player: token, input }); } catch (_) {}
   }
 
   function fitCanvas() {
