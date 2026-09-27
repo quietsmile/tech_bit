@@ -157,7 +157,7 @@
         <h2>抓人游戏</h2>
         <p>一个人也能玩，2–5 人联机更热闹。光点按难度分级，答对可加速，还能进入小世界挑战直接吃的低分点。</p>
         <div class="meta"><span>单人/2–5人联机</span><span>答题</span><span>实时对战</span></div>
-        <a href="http://127.0.0.1:8766/" data-local-port="8766">进入游戏</a>
+        <a href="http://127.0.0.1:8765/" data-local-port="8765">进入游戏</a>
       </article>
 
       <article class="game" style="--accent:#22c55e">
@@ -194,9 +194,14 @@
     </div>
   </section>
   <p class="note">
-    两台 Mac 连接同一个热点即可游玩。<br>
-    联机游戏地址：<code>http://172.20.10.12:8765</code>
-    游戏中心地址：<code>http://172.20.10.11:8100</code>
+    同一网络下的设备直接访问本页即可游玩（地址栏里的 IP 就是分享给别人的地址）。<br>
+    抓人游戏直连地址：<code id="chase-url"></code>
+    <script>
+      (function () {
+        var el = document.getElementById("chase-url");
+        if (el) el.textContent = location.protocol + "//" + location.hostname + ":8765/";
+      })();
+    </script>
   </p>
 </main>
   <script>
