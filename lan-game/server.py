@@ -7,7 +7,6 @@ import os
 import random
 import threading
 import time
-from bisect import bisect_right
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -25,6 +24,8 @@ MICRO_WORLD_HEIGHT = 360
 PLAYER_RADIUS = 14
 TARGET_COINS = 10
 OFFLINE_AFTER = 8.0
+RESUME_KEEP_AFTER = 180.0
+WORLD_REENTER_COOLDOWN = 3.0
 
 INITIAL_SPEED = 5
 MIN_SPEED = 1
@@ -34,8 +35,6 @@ ESCAPE_TRIGGER_SECONDS = 3.0
 GROWTH_PER_COIN = 1.02
 TAIL_INITIAL_PLAYER_RATIO = 0.10
 TAIL_GROWTH_PER_COIN = 1.04
-TAIL_PATH_STEP = 3
-TAIL_PATH_MAX = 2400
 COIN_VALUES = list(range(1, 11))
 POWER_LAW_EXPONENT = 1.35
 
@@ -81,10 +80,6 @@ COLORS = ["#38bdf8", "#f472b6", "#facc15", "#4ade80", "#c084fc", "#fb923c"]
 COIN_WEIGHTS = [1 / (value ** POWER_LAW_EXPONENT) for value in COIN_VALUES]
 random.seed(time.time_ns())
 
-COLORS = ["#38bdf8", "#f472b6", "#facc15", "#4ade80", "#c084fc", "#fb923c"]
-COIN_WEIGHTS = [1 / (value ** POWER_LAW_EXPONENT) for value in COIN_VALUES]
-random.seed(time.time_ns())
-
 # ---- 通用房间中继（贪吃蛇等联机游戏复用）：房主广播状态，客人转发输入 ----
 RELAY_ROOMS = {}
 RELAY_LOCK = threading.Lock()
@@ -125,8 +120,16 @@ def tail_length(player):
     eaten = player.get("eaten", 0)
     if eaten <= 0:
         return 0.0
-    # This is the visible length beyond the player's edge.
+    # 尾长只作为成就统计数值，不再绘制拖尾。
     return player_radius(player) * 2 * TAIL_INITIAL_PLAYER_RATIO * (TAIL_GROWTH_PER_COIN ** eaten)
+
+
+def new_secret():
+    return "".join(random.choice("0123456789abcdef") for _ in range(16))
+
+
+def is_offline(player):
+    return player.get("_offline_since") is not None
 
 
 ACHIEVEMENTS = [
@@ -298,87 +301,6 @@ def weighted_value(values):
     return random.choices(values, weights=weights, k=1)[0]
 
 
-def reset_tail_path(player):
-    player["_path"] = [{"x": player["x"], "y": player["y"]}]
-    player["_tail_points"] = []
-
-
-def rebuild_tail_points(player):
-    # The tail is sampled backwards from the player's own recent movement
-    # trajectory. It never uses the eaten orb position as an anchor.
-    path = player.get("_path") or [{"x": player["x"], "y": player["y"]}]
-    points = list(path)
-    if math.hypot(player["x"] - points[-1]["x"], player["y"] - points[-1]["y"]) > 0.1:
-        points.append({"x": player["x"], "y": player["y"]})
-
-    radius = player_radius(player)
-    length = tail_length(player)
-    count = 0 if length < 0.5 else min(90, max(2, int(math.ceil(length / 2.5))))
-
-    tail_points = []
-    if count <= 0:
-        player["_tail_points"] = tail_points
-        return
-
-    cumulative = [0.0]
-    for index in range(1, len(points)):
-        distance = math.hypot(
-            points[index]["x"] - points[index - 1]["x"],
-            points[index]["y"] - points[index - 1]["y"],
-        )
-        cumulative.append(cumulative[-1] + distance)
-    total_distance = cumulative[-1]
-
-    for segment_index in range(1, count + 1):
-        # Measure backwards from the player's edge, not its center. This keeps
-        # even a short tail visible outside the body.
-        backward_distance = radius + length * segment_index / count
-        forward_distance = total_distance - backward_distance
-
-        if forward_distance < 0:
-            # If there is not enough movement history yet, continue the oldest
-            # known trajectory backwards so the tail stays connected.
-            first = points[0]
-            second = points[1] if len(points) > 1 else None
-            if second and math.hypot(first["x"] - second["x"], first["y"] - second["y"]) > 0.01:
-                angle = math.atan2(first["y"] - second["y"], first["x"] - second["x"])
-            else:
-                angle = math.atan2(-player.get("dy", 0.0), -player.get("dx", 0.0))
-                if abs(player.get("dx", 0.0)) < 0.01 and abs(player.get("dy", 0.0)) < 0.01:
-                    angle = math.pi
-            over = -forward_distance
-            x = first["x"] + math.cos(angle) * over
-            y = first["y"] + math.sin(angle) * over
-        else:
-            end_index = bisect_right(cumulative, forward_distance)
-            start_index = end_index - 1
-            segment_distance = cumulative[end_index] - cumulative[start_index]
-            ratio = (forward_distance - cumulative[start_index]) / segment_distance if segment_distance else 0
-            start = points[start_index]
-            end = points[end_index]
-            x = start["x"] + (end["x"] - start["x"]) * ratio
-            y = start["y"] + (end["y"] - start["y"]) * ratio
-
-        tail_points.append({
-            "x": x,
-            "y": y,
-            "radius": radius * max(0.24, 0.50 - (segment_index / count) * 0.28),
-        })
-
-    player["_tail_points"] = tail_points
-
-
-def update_tail_path(player):
-    path = player.setdefault("_path", [{"x": player["x"], "y": player["y"]}])
-    last = path[-1]
-    moved = math.hypot(player["x"] - last["x"], player["y"] - last["y"])
-    if moved >= TAIL_PATH_STEP:
-        path.append({"x": player["x"], "y": player["y"]})
-        if len(path) > TAIL_PATH_MAX:
-            del path[:len(path) - TAIL_PATH_MAX]
-        rebuild_tail_points(player)
-
-
 class GameState:
     def __init__(self):
         self.lock = threading.RLock()
@@ -472,8 +394,24 @@ class GameState:
                     angle = random.uniform(0, math.tau)
                     player["x"] = max(35, min(WORLD_WIDTH - 35, world["portal_x"] + math.cos(angle) * 46))
                     player["y"] = max(35, min(WORLD_HEIGHT - 35, world["portal_y"] + math.sin(angle) * 46))
-                    reset_tail_path(player)
                     self.set_feedback(player, "info", "小世界已吃完，你回到了主地图")
+
+    def self_payload_locked(self, player):
+        return {
+            "id": player["id"],
+            "name": player["name"],
+            "color": player["color"],
+            "x": player["x"],
+            "y": player["y"],
+            "score": player["score"],
+            "speed": player["speed"],
+            "eaten": player["eaten"],
+            "skips": player["skips"],
+            "size": player["size"],
+            "radius": player_radius(player),
+            "tailLength": player["tailLength"],
+            "world_id": player["_world_id"],
+        }
 
     def join(self, name):
         with self.lock:
@@ -495,7 +433,10 @@ class GameState:
                 "eaten": 0,
                 "skips": SKIP_CHANCES,
                 "last_seen": time.time(),
+                "secret": new_secret(),
                 "_world_id": None,
+                "_world_cooldown_until": 0.0,
+                "_offline_since": None,
                 "_pending": None,
                 "_feedback": None,
                 "size": 1.0,
@@ -503,27 +444,21 @@ class GameState:
                 "achievements": [],
                 "_achievement_keys": set(),
                 "_achievement_toasts": [],
-                "_path": [],
-                "_tail": [],
-                "_tail_points": [],
             }
             player = self.players[player_id]
-            reset_tail_path(player)
-            return {
-                "id": player["id"],
-                "name": player["name"],
-                "color": player["color"],
-                "x": player["x"],
-                "y": player["y"],
-                "score": player["score"],
-                "speed": player["speed"],
-                "eaten": player["eaten"],
-                "skips": player["skips"],
-                "size": player["size"],
-                "radius": player_radius(player),
-                "tailLength": player["tailLength"],
-                "world_id": player["_world_id"],
-            }
+            payload = self.self_payload_locked(player)
+            payload["secret"] = player["secret"]
+            return payload
+
+    def resume(self, player_id, secret):
+        """断线/刷新后凭 secret 找回原角色（保留分数、速度、体型、成就）。"""
+        with self.lock:
+            player = self.players.get(player_id)
+            if not player or not secret or player.get("secret") != secret:
+                return None
+            player["last_seen"] = time.time()
+            player["_offline_since"] = None
+            return self.self_payload_locked(player)
 
     def set_input(self, player_id, dx, dy):
         with self.lock:
@@ -537,7 +472,14 @@ class GameState:
 
     def leave(self, player_id):
         with self.lock:
-            self.players.pop(player_id, None)
+            player = self.players.get(player_id)
+            if not player:
+                return
+            # 关闭标签页只标记离线（地图上变灰），保留角色供重连，不立即删除。
+            player["dx"] = 0
+            player["dy"] = 0
+            if not is_offline(player):
+                player["_offline_since"] = time.time()
 
     def set_feedback(self, player, kind, message):
         player["_feedback"] = {
@@ -552,8 +494,6 @@ class GameState:
         player["speed"] = min(MAX_SPEED, old_speed + value)
         player["eaten"] += 1
         player["size"] = GROWTH_PER_COIN ** player["eaten"]
-        player["_tail"].append({"value": value, "category": category})
-        rebuild_tail_points(player)
         player["tailLength"] = tail_length(player)
         unlocked = evaluate_achievements_locked(player)
         if unlocked:
@@ -610,8 +550,10 @@ class GameState:
             length = math.hypot(dx, dy) or 1
             dx /= length
             dy /= length
-            player["x"] = max(PLAYER_RADIUS, min(width - PLAYER_RADIUS, coin["x"] + dx * 52))
-            player["y"] = max(PLAYER_RADIUS, min(height - PLAYER_RADIUS, coin["y"] + dy * 52))
+            # 弹开距离必须超出碰撞圈，否则大体型玩家会贴着同一颗光点反复触发跳题。
+            bounce = max(52.0, player_radius(player) + coin_radius(coin["value"]) + 24)
+            player["x"] = max(PLAYER_RADIUS, min(width - PLAYER_RADIUS, coin["x"] + dx * bounce))
+            player["y"] = max(PLAYER_RADIUS, min(height - PLAYER_RADIUS, coin["y"] + dy * bounce))
             player["_pending"] = None
             self.set_feedback(player, "info", f"安全跳过成功！剩余 {player['skips']} 次")
             return {"ok": True, "skips_left": player["skips"]}
@@ -635,23 +577,34 @@ class GameState:
             player["_world_id"] = None
             player["dx"] = 0
             player["dy"] = 0
+            player["_world_cooldown_until"] = time.time() + WORLD_REENTER_COOLDOWN
             if world:
-                angle = random.uniform(0, math.tau)
-                player["x"] = max(35, min(WORLD_WIDTH - 35, world["portal_x"] + math.cos(angle) * 46))
-                player["y"] = max(35, min(WORLD_HEIGHT - 35, world["portal_y"] + math.sin(angle) * 46))
+                # 沿"传送门 → 地图中心"方向弹出足够远，保证落点在入口判定圈外。
+                angle = math.atan2(
+                    WORLD_HEIGHT / 2 - world["portal_y"],
+                    WORLD_WIDTH / 2 - world["portal_x"],
+                ) + random.uniform(-0.7, 0.7)
+                dist = max(60.0, player_radius(player) + 46)
+                player["x"] = max(35, min(WORLD_WIDTH - 35, world["portal_x"] + math.cos(angle) * dist))
+                player["y"] = max(35, min(WORLD_HEIGHT - 35, world["portal_y"] + math.sin(angle) * dist))
             else:
                 player["x"] = random.uniform(70, WORLD_WIDTH - 70)
                 player["y"] = random.uniform(70, WORLD_HEIGHT - 70)
-            reset_tail_path(player)
 
-            self.set_feedback(player, "info", "已退出小世界，回到主地图")
+            self.set_feedback(
+                player, "info",
+                f"已退出小世界，回到主地图（{WORLD_REENTER_COOLDOWN:.0f} 秒内入口不会再次吸入）",
+            )
             return {"ok": True}
 
     def snapshot(self, player_id=None):
         with self.lock:
+            now = time.time()
             player = self.players.get(player_id) if player_id else None
             if player:
-                player["last_seen"] = time.time()
+                player["last_seen"] = now
+                # 只要还在轮询就视为在线（例如后台标签页恢复前台）。
+                player["_offline_since"] = None
 
             world_id = player.get("_world_id") if player else None
             public_players = [{
@@ -668,9 +621,22 @@ class GameState:
                 "tailLength": tail_length(item),
                 "radius": player_radius(item),
                 "world_id": item["_world_id"],
-                "tail": item["_tail_points"],
+                "online": not is_offline(item),
                 "achievements": [entry["key"] for entry in item["achievements"]],
             } for item in self.players.values() if item.get("_world_id") == world_id]
+
+            # 全服排行榜：所有人（包括在其他小世界里的玩家）都可见。
+            public_leaderboard = [{
+                "id": item["id"],
+                "name": item["name"],
+                "score": item["score"],
+                "speed": item["speed"],
+                "eaten": item["eaten"],
+                "tailLength": tail_length(item),
+                "achievements": [entry["key"] for entry in item["achievements"]],
+                "in_world": bool(item.get("_world_id")),
+                "online": not is_offline(item),
+            } for item in self.players.values()]
 
             public_coins = []
             direct_max = 1
@@ -733,8 +699,9 @@ class GameState:
             achievement_toasts = list(player["_achievement_toasts"]) if player else []
             if player:
                 player["_achievement_toasts"].clear()
+            portal_cooldown = max(0.0, player.get("_world_cooldown_until", 0) - now) if player else 0.0
             return {
-                "now": time.time(),
+                "now": now,
                 "world": {"width": width, "height": height},
                 "rules": {
                     "initialSpeed": INITIAL_SPEED,
@@ -748,11 +715,13 @@ class GameState:
                     "tailGrowthPerCoin": TAIL_GROWTH_PER_COIN,
                 },
                 "players": public_players,
+                "leaderboard": public_leaderboard,
                 "achievementDefinitions": ACHIEVEMENTS,
                 "achievementToasts": achievement_toasts,
                 "coins": public_coins,
                 "worlds": public_worlds if not world_id else [],
                 "active_world": active_payload,
+                "portal_cooldown": round(portal_cooldown, 1),
                 "quiz": quiz_payload,
                 "feedback": feedback,
             }
@@ -760,15 +729,26 @@ class GameState:
     def update(self, dt):
         with self.lock:
             now = time.time()
-            stale = [pid for pid, p in self.players.items() if now - p["last_seen"] > OFFLINE_AFTER]
-            for pid in stale:
-                self.players.pop(pid, None)
+            # 超过 OFFLINE_AFTER 没有消息 → 标记离线（停止移动、地图变灰），角色保留；
+            # 离线超过 RESUME_KEEP_AFTER 才真正移除，期间可以凭 secret 重连。
+            for player in self.players.values():
+                if not is_offline(player) and now - player["last_seen"] > OFFLINE_AFTER:
+                    player["_offline_since"] = now
+                    player["dx"] = 0
+                    player["dy"] = 0
+            expired = [pid for pid, p in self.players.items()
+                       if is_offline(p) and now - p["_offline_since"] > RESUME_KEEP_AFTER]
+            for pid in expired:
+                gone = self.players.pop(pid, None)
+                pending = gone.get("_pending") if gone else None
+                if pending and pending.get("coin"):
+                    self.coins[pending["coin"]["id"]] = pending["coin"]
 
             if len(self.worlds) < MAX_SMALL_WORLDS and random.random() < min(0.9, SMALL_WORLD_RATE_PER_SECOND * dt):
                 self.spawn_world_locked()
 
             for player in self.players.values():
-                if player.get("_pending"):
+                if player.get("_pending") or is_offline(player):
                     continue
                 width, height = self.dimensions(player.get("_world_id"))
                 radius = player_radius(player)
@@ -780,17 +760,19 @@ class GameState:
                     dy /= length
                 player["x"] = max(radius, min(width - radius, player["x"] + dx * speed_px * dt))
                 player["y"] = max(radius, min(height - radius, player["y"] + dy * speed_px * dt))
-                update_tail_path(player)
 
-            for coin in self.coins.values():
-                all_coins = list(self.coins.values())
+            coins_list = list(self.coins.values())
+            active_players = [p for p in self.players.values() if not is_offline(p)]
+            for coin in coins_list:
                 width, height = self.dimensions(coin.get("world_id"))
-                update_coin_position(coin, all_coins, list(self.players.values()), width, height, dt)
+                update_coin_position(coin, coins_list, active_players, width, height, dt)
 
             # Enter mini-world portals.
             if len(self.worlds):
                 for player in self.players.values():
-                    if player.get("_world_id") or player.get("_pending"):
+                    if player.get("_world_id") or player.get("_pending") or is_offline(player):
+                        continue
+                    if now < player.get("_world_cooldown_until", 0):
                         continue
                     for world in list(self.worlds.values()):
                         player_radius_value = player_radius(player)
@@ -801,7 +783,6 @@ class GameState:
                             player["y"] = random.uniform(34, MICRO_WORLD_HEIGHT - 34)
                             player["dx"] = 0
                             player["dy"] = 0
-                            reset_tail_path(player)
                             config = MICRO_TIERS[world["tier"]]
                             self.set_feedback(player, "info", f"进入{config['label']}！≤{config['direct_max']}分直接吃")
                             break
@@ -809,7 +790,7 @@ class GameState:
             # Coin collisions, only within the player's current map.
             consumed = []
             for player in self.players.values():
-                if player.get("_pending"):
+                if player.get("_pending") or is_offline(player):
                     continue
                 world_id = player.get("_world_id")
                 direct_max = 1
@@ -949,6 +930,16 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/join":
             player = GAME.join(data.get("name", ""))
             self.send_json({"ok": True, "player": player})
+        elif route == "/resume":
+            try:
+                player_id = int(data.get("id", 0))
+            except (TypeError, ValueError):
+                player_id = 0
+            player = GAME.resume(player_id, str(data.get("secret", "")))
+            if player:
+                self.send_json({"ok": True, "player": player})
+            else:
+                self.send_json({"ok": False, "error": "no-session"})
         elif route == "/input":
             try:
                 player_id = int(data.get("id", 0))
