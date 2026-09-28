@@ -47,6 +47,9 @@
     return (head + (head.endsWith('小') && tail.startsWith('小') ? tail.slice(1) : tail)).slice(0, 12);
   }
   playerIdInput.value = randomSnakeName();
+  document.getElementById('rollSnakeName').addEventListener('click', function () {
+    playerIdInput.value = randomSnakeName();
+  });
 
   var mode = 'menu'; // menu | local | host | guest
   var onlineMode = 'shared'; // shared | pk

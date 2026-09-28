@@ -185,7 +185,10 @@
       <button id="btnSolo" class="menu-btn primary">🎮 单人游戏</button>
       <button id="btnShared" class="menu-btn">🌐 共同地图（1–6人）</button>
       <button id="btnPk" class="menu-btn">🎯 独立地图 PK（1–6人）</button>
-      <input id="playerIdInput" class="hidden2" maxlength="12" value="玩家1" autocomplete="off">
+      <div class="name-row">
+        <input id="playerIdInput" class="player-name" maxlength="12" readonly autocomplete="off">
+        <button id="rollSnakeName" class="roll-btn" type="button" title="随机换一个名字">🎲</button>
+      </div>
       <div id="menuStatus"></div>
     </div>
   </div>
@@ -207,6 +210,12 @@
     .menu-panel h2 { font-size: 1.5rem; margin-bottom: 4px; }
     .menu-btn { width: 100%; font-size: 1rem; padding: 12px; }
     .menu-btn.primary { background: linear-gradient(120deg, #38bdf8, #4ade80); }
+    .name-row { display: flex; gap: 8px; align-items: center; }
+    .player-name {
+      flex: 1; padding: 10px 12px; border: 1px solid #46566d; border-radius: 8px;
+      background: #0e1726; color: #fff; outline: none; font-size: .95rem; text-align: center;
+    }
+    .roll-btn { width: 44px; height: 42px; padding: 0; border-radius: 8px; font-size: 18px; }
     .join-row { display: flex; gap: 8px; }
     .join-row input {
       flex: 1; padding: 10px 12px; border-radius: 6px; border: 1px solid #3a4256;
@@ -217,6 +226,6 @@
     #menuStatus { min-height: 18px; font-size: 0.85rem; color: #fca5a5; }
     .hidden2 { display: none !important; }
   </style>
-  <script src="game.js?v=20260928-12"></script>
+  <script src="game.js?v=20260928-13"></script>
 </body>
 </html>

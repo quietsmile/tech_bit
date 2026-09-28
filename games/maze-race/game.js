@@ -75,6 +75,9 @@
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayDesc = document.getElementById('overlayDesc');
   const overlayBtn = document.getElementById('overlayBtn');
+  const rollNameBtn = document.getElementById('rollName');
+  nameInput.maxLength = 12;
+  nameInput.readOnly = true;
 
   let room = localStorage.getItem('maze_race_room') || '';
   let token = localStorage.getItem('maze_race_token_' + room) || '';
@@ -91,6 +94,18 @@
     KeyS: 2, ArrowDown: 2,
     KeyA: 3, ArrowLeft: 3
   };
+
+  function randomRunnerName() {
+    const heads = ['闪电', '旋风', '彩虹', '开心', '无敌', '勇敢', '飞毛腿', '神秘', '暖暖', '超级', '小小', '威武'];
+    const tails = ['小老虎', '小飞龙', '猎豹', '小熊猫', '企鹅', '小狮子', '海豚', '小飞侠', '星星', '小恐龙', '奥特曼', '小蜜蜂'];
+    const head = heads[Math.floor(Math.random() * heads.length)];
+    const tail = tails[Math.floor(Math.random() * tails.length)];
+    return (head + (head.endsWith('小') && tail.startsWith('小') ? tail.slice(1) : tail)).slice(0, 12);
+  }
+  nameInput.value = randomRunnerName();
+  rollNameBtn.addEventListener('click', () => {
+    nameInput.value = randomRunnerName();
+  });
 
   async function api(path, body) {
     const options = body === undefined ? { method: 'GET' } : {
@@ -120,7 +135,7 @@
   }
 
   async function startSolo() {
-    const name = nameInput.value.trim() || '单人选手';
+    const name = nameInput.value.trim() || randomRunnerName();
     try {
       const result = await api('/api/solo', { name });
       if (!result.ok) throw new Error(result.error);
@@ -134,7 +149,7 @@
   }
 
   async function autoJoin() {
-    const name = nameInput.value.trim() || ('小选手' + Math.floor(Math.random() * 90 + 10));
+    const name = nameInput.value.trim() || randomRunnerName();
     joinBtn.disabled = true;
     connectMsg.textContent = '正在进入公共大厅…';
     try {
@@ -332,9 +347,6 @@
 
   joinBtn.addEventListener('click', autoJoin);
   soloBtn.addEventListener('click', startSolo);
-  nameInput.addEventListener('keydown', event => {
-    if (event.key === 'Enter') autoJoin();
-  });
   addEventListener('keydown', event => {
     if (keyMap[event.code] === undefined) return;
     event.preventDefault();
