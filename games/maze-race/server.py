@@ -41,6 +41,12 @@ LEVELS = [
 ROOMS = {}
 LOCK = threading.RLock()
 _ITEM_SEQ = 0
+GAME_LOOP_STATUS = {
+    "started": False,
+    "last_tick": 0,
+    "rooms": 0,
+    "error": "",
+}
 
 
 def generate_maze(cols, rows):
@@ -355,10 +361,19 @@ def state(room, player_token):
 
 
 def game_loop():
+    GAME_LOOP_STATUS["started"] = True
     while True:
-        with LOCK:
-            for room in list(ROOMS.values()):
-                tick_room(room)
+        try:
+            with LOCK:
+                GAME_LOOP_STATUS["last_tick"] = time.time()
+                GAME_LOOP_STATUS["rooms"] = len(ROOMS)
+                GAME_LOOP_STATUS["error"] = ""
+                for room in list(ROOMS.values()):
+                    tick_room(room)
+        except Exception as exc:
+            GAME_LOOP_STATUS["error"] = f"{type(exc).__name__}: {exc}"
+            import traceback
+            traceback.print_exc()
         time.sleep(1 / 60)
 
 
@@ -426,6 +441,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(state(room, token))
         if parsed.path == "/api/ping":
             return self.send_json({"ok": True})
+        if parsed.path == "/api/debug/loop":
+            return self.send_json({"ok": True, "loop": dict(GAME_LOOP_STATUS)})
         return self.send_json({"ok": False, "error": "not found"}, 404)
 
     def serve_file(self, name, content_type):
