@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>密室逃脱 · 解谜大师</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="home-button" href="../index.html">🏠 游戏中心</a>
+
+  <!-- 开始界面 -->
+  <section id="intro" class="screen">
+    <h1>🔐 密室逃脱</h1>
+    <p class="sub">解谜大师 · 单人闯关</p>
+    <div class="story">
+      你被困在一间神秘书房里。<br>
+      房间里藏着 <b>4 道谜题</b>：密码箱、灯光记忆、谜语门、时钟密码。<br>
+      <b>5 分钟</b>内全部破解，打开大门逃出去，你就是<b>解谜大师</b>！
+    </div>
+    <ul class="rules">
+      <li>🧩 四道谜题环环相扣，每解一关自动进入下一关</li>
+      <li>⏰ 全程 5 分钟倒计时，超时被困，从头再来</li>
+      <li>🏆 逃出去解锁称号「解谜大师」</li>
+    </ul>
+    <button id="startBtn" class="big">🚪 开始逃脱</button>
+    <p class="tip">每次谜题都会随机变化，可以反复挑战</p>
+  </section>
+
+  <!-- 游戏界面 -->
+  <section id="game" class="screen hidden">
+    <header>
+      <span id="levelTag" class="chip">第 1 关 · 密码箱</span>
+      <span id="timer" class="chip timer">05:00</span>
+    </header>
+    <div class="progress"><div id="progBar"></div></div>
+
+    <!-- 关1 密码箱 -->
+    <div id="pz1" class="panel">
+      <h2>🔐 第一关 · 密码箱</h2>
+      <p class="tip">房间里 4 件物品各藏着一个数字，点开它们，拼出 4 位密码！</p>
+      <div class="objects">
+        <button class="obj" data-i="0">💡<span>台灯</span></button>
+        <button class="obj" data-i="1">🖼️<span>挂画</span></button>
+        <button class="obj" data-i="2">🌍<span>地球仪</span></button>
+        <button class="obj" data-i="3">🗄️<span>抽屉</span></button>
+      </div>
+      <div id="clueList"></div>
+      <div id="codeRow" class="hidden">
+        <input id="codeInput" maxlength="4" inputmode="numeric" placeholder="密码">
+        <button id="codeOk">开箱</button>
+      </div>
+    </div>
+
+    <!-- 关2 记忆灯光 -->
+    <div id="pz2" class="panel hidden">
+      <h2>💡 第二关 · 记忆灯光</h2>
+      <p id="simonTip" class="tip">仔细看灯光亮起的顺序，然后按同样顺序点一遍！</p>
+      <div class="lamps">
+        <button class="lamp" data-i="0" style="--c:#ff6b6b"></button>
+        <button class="lamp" data-i="1" style="--c:#ffd93d"></button>
+        <button class="lamp" data-i="2" style="--c:#4d96ff"></button>
+        <button class="lamp" data-i="3" style="--c:#6bd968"></button>
+      </div>
+      <div class="controls"><button id="simonReplay" class="ghost">🔁 重播序列（不扣时）</button></div>
+    </div>
+
+    <!-- 关3 谜语门 -->
+    <div id="pz3" class="panel hidden">
+      <h2>🚪 第三关 · 谜语门</h2>
+      <p class="tip">回答谜语，答对开门！共 2 题。</p>
+      <div id="riddleQ" class="riddle-q"></div>
+      <div id="riddleChoices" class="choices"></div>
+    </div>
+
+    <!-- 关4 时钟密码 -->
+    <div id="pz4" class="panel hidden">
+      <h2>🕰️ 第四关 · 时钟密码</h2>
+      <p id="clockTip" class="tip"></p>
+      <div class="clock-row">
+        <svg id="clockSvg" viewBox="0 0 200 200" width="170" height="170">
+          <circle cx="100" cy="100" r="92" class="clock-face"/>
+          <g id="clockTicks"></g>
+          <line id="handH" x1="100" y1="100" x2="100" y2="55" class="hand hand-h"/>
+          <line id="handM" x1="100" y1="100" x2="100" y2="30" class="hand hand-m"/>
+          <circle cx="100" cy="100" r="5" class="clock-pin"/>
+        </svg>
+        <div id="clockText" class="clock-text"></div>
+      </div>
+      <div class="clock-btns">
+        <button data-act="h-1">时 −</button>
+        <button data-act="h+1">时 +</button>
+        <button data-act="m-5">分 −</button>
+        <button data-act="m+5">分 +</button>
+      </div>
+      <div class="controls"><button id="clockOk" class="big">🔓 转动门把</button></div>
+    </div>
+
+    <div id="msg" class="msg"></div>
+  </section>
+
+  <!-- 失败 -->
+  <section id="failScreen" class="screen hidden">
+    <h1>⏰ 时间到！</h1>
+    <p class="sub">你被困在了书房……就差一点点！</p>
+    <div id="failInfo" class="story"></div>
+    <button id="failRetry" class="big">🔄 再来一次（全新谜题）</button>
+  </section>
+
+  <!-- 成功 -->
+  <section id="winScreen" class="screen hidden">
+    <h1>🎉 逃脱成功！</h1>
+    <p id="winInfo" class="sub"></p>
+    <div class="badge-big">🏅 解谜大师</div>
+    <p class="tip">称号已收录进「称号墙」</p>
+    <button id="winRetry" class="big">🏃 再逃一次（全新谜题）</button>
+    <a class="big ghost" href="../solo-titles/index.html">查看称号墙 →</a>
+  </section>
+
+  <div id="confetti"></div>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -10,7 +10,8 @@
     { key: "time",  icon: "⏰", name: "时间大师",  game: "猜时间闯关",       link: "../time-guess/index.html?mode=solo",          how: "完成猜 10 秒、最快点击、篮球落地三关" },
     { key: "robot", icon: "🤖", name: "指挥官",    game: "给机器人指路",     link: "../robot-path/index.html?mode=solo",          how: "先选年级，再完成该年级全部关卡" },
     { key: "color", icon: "🎨", name: "鹰眼大师",  game: "颜色大挑战",       link: "../color-challenge/index.html?mode=solo",     how: "闯过全部 8 关色差挑战" },
-    { key: "poem",  icon: "📜", name: "古诗达人",  game: "看AI图猜古诗",     link: "../poem-guess/index.html?mode=solo",          how: "先选年级范围，再完成一轮全部题目" }
+    { key: "poem",  icon: "📜", name: "古诗达人",  game: "看AI图猜古诗",     link: "../poem-guess/index.html?mode=solo",          how: "先选年级范围，再完成一轮全部题目" },
+    { key: "puzzle", icon: "🗝️", name: "解谜大师", game: "密室逃脱", link: "../escape-room/index.html", how: "5 分钟内破解 4 道谜题逃出书房" }
   ];
 
   function load() {

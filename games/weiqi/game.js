@@ -193,9 +193,24 @@
       score += nearAny * 6;
       score += (r === 2 || r === 4 || r === 6) && (c === 2 || c === 4 || c === 6) ? cfg.starW : 0; // 星位附近
       score += Math.random() * cfg.noise;
-      // 困难：预判对手最强的立即提子反击
+      // 困难：两层推演——再算对手最强一手回应（提子/打吃），净收益高者胜出
       if (cfg.lookahead) {
-        score -= bestOppCapture(res.board) * 90;
+        var oppBest = 0;
+        for (var rr = 0; rr < N; rr++) for (var cc = 0; cc < N; cc++) {
+          if (res.board[rr][cc] !== 0) continue;
+          var r2 = tryPlace(res.board, rr, cc, 1, koStr);
+          if (!r2.legal) continue;
+          var g2 = r2.captured * 130;
+          neighbors(rr, cc).forEach(function (n) {
+            if (r2.board[n[0]][n[1]] === 1) {
+              var og = groupInfo(r2.board, n[0], n[1]);
+              if (og.libs === 1) g2 += 45;
+              else if (og.libs === 2) g2 += 12;
+            }
+          });
+          if (g2 > oppBest) oppBest = g2;
+        }
+        score -= oppBest * 0.95;
       }
       if (score > bestScore) { bestScore = score; best = { r: r, c: c }; }
     }

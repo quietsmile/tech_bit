@@ -65,7 +65,7 @@
       <span class="solo-banner-icon">🏅</span>
       <span class="solo-banner-text">
         <b>单人闯关 · 称号墙</b>
-        <small>通关闯关组 6 个游戏收集专属称号 · 已收集 <span id="solo-earned-count">0</span>/6</small>
+        <small>通关闯关组 7 个游戏收集专属称号 · 已收集 <span id="solo-earned-count">0</span>/6</small>
       </span>
       <span class="solo-banner-cta">查看称号墙 →</span>
     </a>
@@ -100,6 +100,14 @@
         <p>一堆色块里藏着一个「不一样」的它。8 关眼力挑战：从 2×2 开始格子越来越多，颜色误差越来越小，看你能闯到第几关！</p>
         <div class="meta"><span>单人挑战</span><span>眼力</span><span>8 关闯关</span></div>
         <a href="./color-challenge/index.html?mode=solo">开始挑战</a>
+      </article>
+
+      <article class="game" style="--accent:#a78bfa">
+        <span class="tag">单人</span>
+        <h2>密室逃脱 · 解谜大师</h2>
+        <p>神秘书房 4 道谜题：密码箱、灯光记忆、谜语门、时钟密码。5 分钟倒计时，逃出去就是「解谜大师」！</p>
+        <div class="meta"><span>单人闯关</span><span>5 分钟</span><span>4 道谜题</span></div>
+        <a href="./escape-room/index.html">开始逃脱</a>
       </article>
 
       <article class="game" style="--accent:#38bdf8">
@@ -228,7 +236,7 @@
       function updateCount() {
         try {
           var data = JSON.parse(localStorage.getItem("techbitSoloTitles") || "{}");
-          var keys = ["spot", "emoji", "time", "robot", "color", "poem"];
+          var keys = ["spot", "emoji", "time", "robot", "color", "poem", "puzzle"];
           var n = 0;
           keys.forEach(function (k) { if (data[k]) n++; });
           var elc = document.getElementById("solo-earned-count");

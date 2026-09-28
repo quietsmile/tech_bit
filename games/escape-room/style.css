@@ -1,0 +1,95 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: radial-gradient(circle at 50% 0%, #2b1d4f, #0a0616 75%);
+  color: #e9e4ff; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px;
+}
+.screen { width: min(94vw, 640px); text-align: center; }
+h1 { font-size: 1.9rem; letter-spacing: 2px; text-shadow: 0 0 24px rgba(167,139,250,.6); }
+.sub { color: #b9a8e8; margin: 6px 0 14px; }
+.story, .story b { line-height: 1.9; color: #cfc4f5; }
+.story { margin: 14px 0; }
+.rules { list-style: none; margin: 12px auto 20px; text-align: left; max-width: 430px; color: #a99ad4; font-size: 14px; line-height: 2; }
+.rules b { color: #d6c9ff; }
+button {
+  font-family: inherit; cursor: pointer; border: none;
+  border-radius: 12px; transition: transform .1s, box-shadow .15s;
+}
+button:active { transform: scale(.96); }
+.big {
+  padding: 14px 34px; font-size: 1.1rem; font-weight: 800; color: #12082b;
+  background: linear-gradient(120deg, #a78bfa, #f472b6);
+  box-shadow: 0 10px 30px rgba(167,139,250,.35);
+}
+.big:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(167,139,250,.5); }
+.big.ghost { background: transparent; color: #a78bfa; border: 1px solid rgba(167,139,250,.5); box-shadow: none; display: inline-block; margin-top: 10px; text-decoration: none; }
+.tip { color: #8d7fb8; font-size: 13px; margin-top: 14px; }
+#game { text-align: left; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.chip { padding: 6px 14px; border-radius: 999px; background: rgba(167,139,250,.15); border: 1px solid rgba(167,139,250,.35); font-weight: 800; font-size: 14px; }
+.timer { color: #ffd166; font-variant-numeric: tabular-nums; }
+.timer.low { color: #ff6b6b; animation: pulse 1s infinite; border-color: rgba(255,107,107,.5); }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+.progress { display: flex; gap: 6px; margin-bottom: 14px; }
+.progress div { flex: 1; height: 8px; border-radius: 99px; background: rgba(167,139,250,.15); }
+.progress div.done { background: linear-gradient(90deg, #a78bfa, #f472b6); }
+.panel {
+  background: rgba(20, 12, 44, .78); border: 1px solid rgba(167,139,250,.3);
+  border-radius: 20px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+}
+.panel h2 { font-size: 1.2rem; margin-bottom: 8px; color: #d6c9ff; }
+.tip { color: #8d7fb8; font-size: 13.5px; line-height: 1.7; margin-bottom: 16px; }
+.objects { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.obj {
+  background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.3);
+  border-radius: 14px; padding: 16px 6px 10px; color: #e9e4ff;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 14px;
+}
+.obj { font-size: 26px; }
+.obj span { font-size: 13px; }
+.obj:hover:not(:disabled) { border-color: #a78bfa; box-shadow: 0 0 18px rgba(167,139,250,.3); }
+.obj:disabled { opacity: .45; cursor: default; }
+.clues { margin: 10px 0; min-height: 20px; }
+.clue-line { padding: 4px 0; color: #ffd166; font-weight: 700; }
+#codeRow { display: flex; gap: 8px; margin-top: 10px; }
+#codeInput {
+  flex: 1; padding: 12px; border-radius: 12px; border: 1px solid rgba(167,139,250,.4);
+  background: #12082b; color: #ffd166; font-size: 1.3rem; letter-spacing: 8px;
+  text-align: center; outline: none;
+}
+#codeOk { padding: 12px 22px; border-radius: 12px; background: #a78bfa; color: #12082b; font-weight: 800; }
+.shake { animation: shake .4s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+.lamps { display: grid; grid-template-columns: repeat(2, 110px); gap: 14px; justify-content: center; margin: 10px 0; }
+.lamp { height: 88px; border-radius: 18px; background: color-mix(in srgb, var(--c) 18%, #1a1030); border: 2px solid var(--c); opacity: .5; }
+.lamp.lit { opacity: 1; background: var(--c); box-shadow: 0 0 30px var(--c); transform: scale(1.05); }
+.lamp.wrong { animation: shake .4s; }
+.controls { margin-top: 14px; display: flex; gap: 10px; justify-content: center; }
+.controls .ghost { background: transparent; color: #a78bfa; border: 1px solid rgba(167,139,250,.4); padding: 8px 16px; font-size: 13px; }
+.riddle-q { font-size: 1.15rem; font-weight: 700; margin: 6px 0 16px; color: #ffe9a8; }
+.choices { display: grid; gap: 10px; }
+.choices button { padding: 13px; border-radius: 12px; background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.35); color: #e9e4ff; font-size: 15px; }
+.choices button:hover:not(:disabled) { border-color: #f472b6; background: rgba(244,114,182,.12); }
+.choices button.ok { border-color: #4ade80; background: rgba(74,222,128,.15); color: #b7f7cd; }
+.choices button.bad { border-color: #ff6b6b; background: rgba(255,107,107,.12); }
+.clock-row { display: flex; align-items: center; gap: 20px; justify-content: center; margin: 8px 0 12px; }
+.clock-face { fill: #f5f0e6; stroke: #3a2c5f; stroke-width: 6; }
+.clock-pin { fill: #3a2c5f; }
+.hand { stroke: #3a2c5f; stroke-linecap: round; }
+.hand-h { stroke-width: 7; }
+.hand-m { stroke-width: 4; stroke: #7c5cd6; }
+.clock-text { font-size: 1.5rem; font-weight: 800; color: #ffd166; font-variant-numeric: tabular-nums; }
+.clock-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 420px; margin: 0 auto 8px; }
+.clock-btns button { padding: 10px 0; border-radius: 10px; background: rgba(167,139,250,.15); border: 1px solid rgba(167,139,250,.4); color: #e9e4ff; font-weight: 700; }
+.clock-btns button:hover { background: rgba(167,139,250,.3); }
+.msg { min-height: 24px; margin-top: 12px; color: #ffd166; font-weight: 700; text-align: center; }
+.badge-big {
+  display: inline-block; margin: 16px 0; padding: 14px 30px; border-radius: 999px;
+  background: linear-gradient(120deg, #ffd166, #f472b6); color: #2b1044;
+  font-size: 1.3rem; font-weight: 900; box-shadow: 0 0 40px rgba(244,114,182,.55);
+}
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
+#confetti i { position: absolute; width: 10px; height: 16px; top: -20px; animation: drop linear forwards; }
+@keyframes drop { to { transform: translateY(110vh) rotate(720deg); } }
