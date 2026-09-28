@@ -29,6 +29,7 @@ window.ChallengeArena = (function () {
       allowRename: true,
       randomName: null,
       autoJoin: false,
+      homeHref: "/games/index.html",
       getProgress: () => ({ status: "playing", score: 0, level: 1 }),
       getTargetConfig: () => ({}),
       onSoloMenu: null,
@@ -84,6 +85,7 @@ window.ChallengeArena = (function () {
       root.className = "challenge-arena-root";
       root.innerHTML = `
         <div class="arena-card">
+          <a class="arena-home" href="${escapeHtml(cfg.homeHref)}">🏠 回到游戏中心</a>
           <div class="arena-title">🌐 ${escapeHtml(cfg.gameName)} · 联机</div>
           <div class="arena-note">
             不需要房间号，也不支持多个房间。<br>
@@ -152,6 +154,8 @@ window.ChallengeArena = (function () {
 .challenge-arena-root{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(circle at 20% 10%, #1c3550, #07101d 58%)}
 .challenge-arena-root.hidden{display:none}
 .arena-card{width:min(480px,94vw);background:#16213e;border:1px solid rgba(125,211,252,.22);border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,.35);color:#eee;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+.arena-home{position:absolute;top:14px;left:14px;z-index:1;padding:8px 13px;border:1px solid rgba(125,211,252,.32);border-radius:999px;background:rgba(9,20,34,.88);color:#dbeafe;font-size:12px;font-weight:800;text-decoration:none;backdrop-filter:blur(8px)}
+.arena-home:hover{background:rgba(56,189,248,.24);border-color:#7dd3fc;color:#fff}
 .arena-title{font-size:20px;font-weight:800;color:#ffd700;margin-bottom:14px}
 .arena-note{color:#a9c3d8;font-size:13px;line-height:1.6;margin:0 0 16px}
 .arena-section-label{display:block;margin:16px 0 8px;color:#ccc;font-size:14px}
