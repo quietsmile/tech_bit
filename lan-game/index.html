@@ -233,10 +233,10 @@
     </div>
     <b style="display:block;margin-top:10px;color:#e8f5ff">小世界</b>
     <div class="row">
-      <span style="color:#86efac">低级 ≤2分直接吃</span>
-      <span style="color:#7dd3fc">中级 ≤3分直接吃</span>
-      <span style="color:#d8b4fe">高级 ≤4分直接吃</span>
-      <span style="color:#fde68a">顶级 ≤5分直接吃</span>
+      <span style="color:#86efac">低级 ≤2分可直接吃</span>
+      <span style="color:#7dd3fc">中级 ≤3分可直接吃</span>
+      <span style="color:#d8b4fe">高级 ≤4分可直接吃</span>
+      <span style="color:#fde68a">顶级 ≤5分可直接吃</span>
       <span>各 10 个题点，吃完消失</span>
     </div>
   </div>
@@ -510,7 +510,7 @@
     function syncWorldPanel() {
       const active = latest.active_world;
       if (active) {
-        worldPanel.textContent = `${active.label} · 剩余 ${active.remaining}/${active.total} · ≤${active.direct_max}分直接吃`;
+        worldPanel.textContent = `${active.label} · 剩余 ${active.remaining}/${active.total} · ≤${active.direct_max}分可直接吃`;
         worldPanel.style.borderColor = `${active.color}88`;
         worldPanel.classList.remove("hidden");
         exitWorldButton.classList.remove("hidden");
@@ -597,7 +597,7 @@
         ctx.font = "700 9px -apple-system, PingFang SC, sans-serif"; ctx.fillStyle = "#dbeafe";
         ctx.fillText(world.short, world.x, world.y + 10);
         ctx.font = "700 10px -apple-system, PingFang SC, sans-serif"; ctx.fillStyle = "rgba(226,240,255,.82)";
-        ctx.fillText(`${world.label} · ≤${world.direct_max}分直接`, world.x, world.y - world.radius - 9);
+        ctx.fillText(`${world.label} · ≤${world.direct_max}分可直接吃`, world.x, world.y - world.radius - 9);
         if (cooldown > 0) {
           ctx.fillStyle = "rgba(252,165,165,.95)";
           ctx.font = "800 10px -apple-system, PingFang SC, sans-serif";

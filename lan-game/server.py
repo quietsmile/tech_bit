@@ -784,7 +784,7 @@ class GameState:
                             player["dx"] = 0
                             player["dy"] = 0
                             config = MICRO_TIERS[world["tier"]]
-                            self.set_feedback(player, "info", f"进入{config['label']}！≤{config['direct_max']}分直接吃")
+                            self.set_feedback(player, "info", f"进入{config['label']}！≤{config['direct_max']}分可直接吃")
                             break
 
             # Coin collisions, only within the player's current map.
