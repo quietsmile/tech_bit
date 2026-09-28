@@ -120,12 +120,22 @@
     return true;
   }
 
+  /* 清空全部称号（称号墙的清空按钮用） */
+  function clearAll() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* 忽略 */ }
+    /* 同时清掉各游戏本地的旧徽章标记，避免页面残留“已获得”显示 */
+    ["gomoku_badge_zhuge", "chess-badge-xiangqi-little-general", "intl-chess-badge"].forEach(function (k) {
+      try { localStorage.removeItem(k); } catch (e) { /* 忽略 */ }
+    });
+  }
+
   window.SoloTitles = {
     TITLES: TITLES,
     grant: grant,
     isEarned: isEarned,
     getAll: getAll,
-    earnedCount: earnedCount
+    earnedCount: earnedCount,
+    clearAll: clearAll
   };
 
   if (document.readyState === "loading") {

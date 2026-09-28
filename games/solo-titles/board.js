@@ -66,6 +66,27 @@
       });
     }
 
+    var clearBtn = document.getElementById("clearAllBtn");
+    var armed = false, armTimer = null;
+
+    clearBtn.addEventListener("click", function () {
+      if (!armed) {
+        armed = true;
+        clearBtn.textContent = "⚠️ 再点一次，确认清空全部称号";
+        clearBtn.classList.add("danger");
+        armTimer = setTimeout(function () {
+          armed = false;
+          clearBtn.textContent = "🗑️ 一键清空称号";
+          clearBtn.classList.remove("danger");
+        }, 3000);
+        return;
+      }
+      clearTimeout(armTimer);
+      armed = false;
+      window.SoloTitles.clearAll();
+      render();
+    });
+
     render();
     window.addEventListener("storage", render);
     window.addEventListener("focus", render);
