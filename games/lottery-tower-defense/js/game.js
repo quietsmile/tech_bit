@@ -13,6 +13,7 @@ const els={
 };
 const COLORS=['#38bdf8','#f472b6','#4ade80','#facc15'];
 let players=[],battle=null,wheel=null,selected=0,running=false,paused=false,timeLeft=180,lastTs=null,wheelBusy=false,resultShown=false,debugLoops=0;
+let networkMode=false,networkSeat=-1,networkArena=null,lastNetworkRoster=null,lastNetworkDuration=180;
 const aiTimers=new Map();
 let lastInventoryKey='';
 let placingIndex=null;
@@ -26,15 +27,31 @@ function buildSetup(){
   els.playerSetup.appendChild(row);
  }
 }
-function makePlayer(i,type){
+function makePlayer(i,type='human'){
  return {idx:i,name:$('.setup-row [data-name]',undefined)?.value||'',type,color:COLORS[i],lane:i,coins:CONFIG.startCoins,level:1,
    score:0,kills:0,damage:0,inventory:[],deployed:0,spins:0,aiCd:1+Math.random()};
 }
-function startGame(){
- const rows=[...els.playerSetup.querySelectorAll('.setup-row')];
- players=rows.map((row,i)=>{const p=makePlayer(i,row.querySelector('[data-type]').value);p.name=row.querySelector('[data-name]').value.trim()||`玩家${i+1}`;return p;});
- timeLeft=Math.max(60,Math.min(600,Number(els.durationInput.value)||180));
- running=true;paused=false;resultShown=false;selected=0;wheelBusy=false;
+function startGame(options={}){
+ if(options.players&&options.players.length){
+  networkMode=true;networkSeat=Number(options.seat)||0;
+  lastNetworkRoster=options.players.slice();
+  lastNetworkDuration=Math.max(60,Math.min(600,Number(options.duration)||180));
+  players=options.players.map((item,i)=>{
+   const p=makePlayer(i,'human');
+   p.name=item.name||`玩家${i+1}`;
+   p.seat=Number(item.seat);
+   return p;
+  });
+  selected=Math.max(0,players.findIndex(p=>p.seat===networkSeat));
+ }else{
+  networkMode=false;networkSeat=-1;
+  const rows=[...els.playerSetup.querySelectorAll('.setup-row')];
+  players=rows.map((row,i)=>{const p=makePlayer(i,'human');p.name=row.querySelector('[data-name]').value.trim()||`玩家${i+1}`;return p;});
+  timeLeft=Math.max(60,Math.min(600,Number(els.durationInput.value)||180));
+ }
+ timeLeft=Math.max(60,Math.min(600,Number(options.duration)||lastNetworkDuration));
+ running=true;paused=false;resultShown=false;wheelBusy=false;
+ if(!networkMode)selected=0;
  lastInventoryKey='';
  SFX.resume();
  battle=new Battle(els.battleCanvas,{
@@ -51,8 +68,10 @@ function renderTabs(){
  els.playerTabs.innerHTML='';
  players.forEach((p,i)=>{
   const btn=document.createElement('button');btn.className='player-tab'+(i===selected?' active':'');btn.type='button';
-  btn.textContent=`${p.name}${p.type==='ai'?' · AI':''}`;
-  btn.onclick=()=>{selected=i;renderTabs();renderProbabilityLegend();render();};els.playerTabs.appendChild(btn);
+  btn.textContent=`${p.name}${p.type==='ai'?' · AI':''}${networkMode&&i===selected?' · 我':''}`;
+  if(!networkMode)btn.onclick=()=>{selected=i;renderTabs();renderProbabilityLegend();render();};
+  else btn.disabled=true;
+  els.playerTabs.appendChild(btn);
  });
 }
 function autoPlaceReward(p,item,index,rewardIndex){
@@ -179,6 +198,7 @@ function updateHUD(){
  els.timeLeft.textContent=Math.ceil(timeLeft);els.waveNum.textContent=battle?battle.wave:0;
  els.totalKills.textContent=battle?battle.totalKills:0;els.escaped.textContent=battle?battle.escaped:0;
  const p=controlled();if(!p)return;
+ p.score=Math.round(p.kills*100+p.damage);
  els.controlledName.textContent=`${p.name}${p.type==='ai'?' · AI':''}`;
  els.coins.textContent=Math.round(p.coins);els.level.textContent=p.level;
  els.unitCount.textContent=battle?battle.unitsOf(p).length:0;els.kills.textContent=p.kills;els.damage.textContent=Math.round(p.damage);
@@ -201,7 +221,6 @@ function endGame(){
  try{localStorage.setItem('lottery_tower_champion',champion.name);}catch(e){}
 }
 buildSetup();
- els.playerCount.addEventListener('change',buildSetup);
  els.tenBtn.addEventListener('click',()=>spinTen(controlled()));
  els.tenClose.addEventListener('click',()=>els.tenResult.classList.add('hidden'));
 els.inventory.addEventListener('click',event=>{
@@ -227,13 +246,47 @@ els.battleCanvas.addEventListener('click',event=>{
  if(index>=0)placingIndex=index;
  renderInventory();
 });
-els.startBtn.addEventListener('click',startGame);
 els.spinBtn.addEventListener('click',()=>spin(controlled()));
 els.upgradeBtn.addEventListener('click',()=>upgrade(controlled()));
 els.pauseBtn.addEventListener('click',()=>{if(!battle)return;paused=!paused;els.pauseBtn.textContent=paused?'继续':'暂停';});
-els.restartBtn.addEventListener('click',()=>{els.result.classList.add('hidden');startGame();});
+els.restartBtn.addEventListener('click',()=>{
+ els.result.classList.add('hidden');
+ if(lastNetworkRoster)startGame({players:lastNetworkRoster,seat:networkSeat,duration:lastNetworkDuration});
+ else startGame();
+});
 els.resultHome.addEventListener('click',()=>location.href='../index.html');
 setInterval(()=>{loop(performance.now());},16);
+
+window.LotteryArena=ChallengeArena.create({
+ gameId:'lottery-td',
+ gameName:'抽奖塔防大作战',
+ autoJoin:true,
+ renderLobbySettings(container,state,isHost){
+  container.innerHTML=`
+   <div class="arena-setting">
+    <label>对局时长（秒）</label>
+    <input id="tdLobbyDuration" type="number" min="60" max="600" step="30" value="${lastNetworkDuration}">
+    <div class="arena-setting-note">所有玩家均为真人；人数满足后自动开始。</div>
+   </div>`;
+  const input=container.querySelector('#tdLobbyDuration');
+  input.addEventListener('change',()=>{lastNetworkDuration=Math.max(60,Math.min(600,Number(input.value)||180));});
+ },
+ getTargetConfig(){return {duration:lastNetworkDuration};},
+ onBegin(data){
+  const source=(data.state&&data.state.players?data.state.players:[]).filter(p=>p.connected);
+  const target=(data.state&&data.state.targetPlayers)||source.length;
+  const roster=source.slice(0,target).map((p,i)=>({name:p.name,seat:p.seat}));
+  if(!roster.some(p=>p.seat===data.seat))roster.push({name:data.name,seat:data.seat});
+  startGame({players:roster,seat:data.seat,duration:data.state&&data.state.config&&data.state.config.duration});
+ },
+ getProgress(){
+  const p=controlled();
+  return {status:running?'playing':'finished',score:Math.round(p?p.score:0),level:p?p.level:1};
+ },
+ onRestart(){
+  if(lastNetworkRoster)startGame({players:lastNetworkRoster,seat:networkSeat,duration:lastNetworkDuration});
+ }
+});
 
 window.LotteryTD={get players(){return players},get battle(){return battle},get wheel(){return wheel},get debugLoops(){return debugLoops},get running(){return running},get paused(){return paused},get timeLeft(){return timeLeft},get battleTime(){return battle?battle.time:0},get anim(){return wheel&&wheel._anim?{t:wheel._anim.t,dur:wheel._anim.dur}:null},get wheelCounts(){return {hasUpdate:!!Wheel.prototype.update,updateSource:Wheel.prototype.update?Wheel.prototype.update.toString().slice(0,240):null,countType:typeof Wheel.updateCount,updates:Wheel.updateCount,ctor:Wheel.name}}};
 })();

@@ -30,7 +30,7 @@
     <p>抽装备 · 卖多余 · 升奖池 · 打野怪 · 3分钟决出“野怪终结者”</p>
   </header>
 
-  <section id="setup" class="card">
+  <section id="setup" class="card hidden">
     <h2>开赛前设置</h2>
     <div class="setup-grid">
       <label>玩家人数
@@ -47,10 +47,6 @@
     </div>
     <div id="playerSetup"></div>
     <button id="startBtn" class="primary">开始战斗</button>
-    <div class="match-box">
-      <div class="match-title">🌐 联机比赛（各守各的 · 比分数 · 2–6 人）</div>
-      <div id="matchStatus">正在进入联机比赛房间…</div>
-    </div>
   </section>
 
   <section id="game" class="hidden">
@@ -106,7 +102,7 @@
 
     <section class="card help">
       <h3>玩法</h3>
-      <p>点击上方玩家标签切换要操作的人。AI 会自动抽奖和部署。抽到的士兵/武器都会自动放置，出战数量不设上限；也可以卖掉不需要的装备，再升级奖池。</p>
+      <p>每位真实玩家在各自设备上控制自己的防线：抽奖、升级、布置装备。开局人数由房主在联机大厅设置，人数满足后自动开始。</p>
     </section>
   </section>
 
@@ -124,7 +120,7 @@
 <script src="js/audio.js?v=2"></script>
 <script src="js/wheel.js?v=2"></script>
 <script src="js/battle.js?v=2"></script>
-<script src="js/game.js?v=tenpull-1"></script>
-  <script src="js/relay.js?v=1"></script>
+<script src="../arena/arena.js?v=autojoin-2"></script>
+<script src="js/game.js?v=network-human-1"></script>
 </body>
 </html>

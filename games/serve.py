@@ -184,6 +184,12 @@ def arena_find_client(room, body):
     return None, None
 
 
+def arena_touch_client(room, client, at):
+    if client:
+        client["lastSeen"] = at
+    return client
+
+
 def arena_start(room, at):
     if not room.get("seed"):
         room["seed"] = random.randint(1, 2_147_483_647)
@@ -228,6 +234,8 @@ def arena_public(room, game_id, at, viewer=None):
         "players": players,
         "lastEvent": room["lastEvent"],
         "roomRevision": room["roomRevision"],
+        "canonicalOrigin": os.environ.get("ARENA_CANONICAL_ORIGIN", ""),
+        "serverId": os.environ.get("ARENA_SERVER_ID", ""),
         "status": viewer_progress["status"] if viewer_progress else "lobby",
         "level": viewer_progress["level"] if viewer_progress else 0,
         "found": sorted(viewer_progress["found"]) if viewer_progress and isinstance(viewer_progress.get("found"), list) else [],
@@ -444,9 +452,8 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id = body.get("clientId")
                 with ARENA_LOCK:
                     arena_prune(room, at)
-                    client = arena_touch(room, token, at)
-                    if not client and client_id:
-                        client = arena_touch(room, client_id, at)
+                    client_id, client = arena_find_client(room, body)
+                    client = arena_touch_client(room, client, at)
 
                     if action == "join":
                         client_id = body.get("clientId")
@@ -737,6 +744,34 @@ class Handler(SimpleHTTPRequestHandler):
                     return
                 scores = sorted(room.get("scores", {}).values(), key=lambda s: -s.get("score", 0))
             self.send_json({"ok": True, "scores": scores})
+
+        if parsed.path.startswith("/api/arena/"):
+            parts = [part for part in parsed.path.split("/") if part]
+            game_id = parts[2] if len(parts) > 2 else ""
+            action = parts[3] if len(parts) > 3 else "state"
+            query = parse_qs(parsed.query)
+            token = query.get("token", [""])[0]
+            at = time.time()
+            with ARENA_LOCK:
+                room = ARENA_ROOMS.get(game_id)
+                if not room:
+                    self.send_json({"ok": False, "error": "invalid-room"}, 404)
+                    return
+                arena_prune(room, at)
+                if action == "queue":
+                    state = arena_public(room, game_id, at)
+                    self.send_json({"ok": True, "activeCount": state["activeCount"],
+                                    "targetPlayers": state["targetPlayers"]})
+                    return
+                if action == "state":
+                    client_id, client = arena_find_client(room, {"token": token})
+                    client = arena_touch_client(room, client, at)
+                    if not client:
+                        self.send_json({"ok": False, "error": "invalid-token"}, 401)
+                        return
+                    self.send_json({"ok": True, "seat": client["seat"], "name": client["name"],
+                                    "state": arena_public(room, game_id, at, client)})
+                    return
         if parsed.path == "/api/relay/state":
             query = parse_qs(parsed.query)
             code = query.get("code", [""])[0]

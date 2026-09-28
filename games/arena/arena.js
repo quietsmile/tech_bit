@@ -26,6 +26,7 @@ window.ChallengeArena = (function () {
       gameName: "闯关游戏",
       onBegin: () => {},
       onRestart: () => {},
+      autoJoin: false,
       getProgress: () => ({ status: "playing", score: 0, level: 1 }),
       getTargetConfig: () => ({}),
       onSoloMenu: null,
@@ -98,6 +99,7 @@ window.ChallengeArena = (function () {
           <div class="arena-lobby-status"></div>
           <div class="arena-queue hidden">当前排队：0 人</div>
           <button class="arena-primary">🚀 自动进入联机房</button>
+          <div class="arena-error"></div>
 
           <div class="arena-rename hidden">
             <input maxlength="16" placeholder="修改我的名字">
@@ -434,8 +436,7 @@ window.ChallengeArena = (function () {
       inject();
       refreshQueue();
       setInterval(refreshQueue, 2000);
-      if (state.token) join(true);
-      else if (sessionStorage.getItem(`arena-${cfg.gameId}-rejoin`) === "1") join(true);
+      if (state.token || sessionStorage.getItem(`arena-${cfg.gameId}-rejoin`) === "1" || cfg.autoJoin) join(true);
       setTimeout(loop, 800);
     }
 
