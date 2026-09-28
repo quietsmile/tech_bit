@@ -231,21 +231,42 @@ function updateHUD(){
 }
 function render(){if(battle)battle.render();if(wheel)wheel.draw();}
 function endGame(){
- running=false;wheelBusy=false;SFX.gameEnd();
+ if(resultShown)return;
+ resultShown=true;running=false;wheelBusy=false;SFX.gameEnd();
  els.game.classList.add('hidden');els.result.classList.remove('hidden');
- const sorted=[...players].sort((a,b)=>b.damage-a.damage||b.kills-a.kills);
- if(lastNetworkMode==='coop'){
-  const success=(battle?battle.totalKills:0)>=(battle?battle.escaped:0);
-  els.champion.textContent=success
-   ?`🤝 合作防守成功！总击杀 ${battle?battle.totalKills:0}，逃脱 ${battle?battle.escaped:0}`
-   :`😮 合作防守失败！总击杀 ${battle?battle.totalKills:0}，逃脱 ${battle?battle.escaped:0}`;
- }else{
-  const champion=sorted[0];
-  els.champion.textContent=`🏆 ${champion.name} 获得称号：野怪终结者`;
-  try{localStorage.setItem('lottery_tower_champion',champion.name);}catch(e){}
- }
- els.finalRanking.innerHTML=sorted.map((p,i)=>`<li>${i+1}. ${p.name} — 总伤害 ${Math.round(p.damage)} / ${p.kills}杀 / ${p.score}分</li>`).join('');
- if(networkArena&&networkArena.pushProgress)networkArena.pushProgress();
+ const showResult=()=>{
+  const remote=new Map();
+  if(networkMode&&networkArena&&typeof networkArena.players==='function'){
+   networkArena.players().forEach(item=>remote.set(Number(item.seat),item.progress||{}));
+  }
+  players.forEach(p=>{
+   if(!networkMode||p.seat===networkSeat)return;
+   const progress=remote.get(p.seat)||{};
+   p.kills=Math.max(0,Number(progress.kills)||0);
+   p.damage=Math.max(0,Number(progress.damage)||0);
+   p.score=Math.max(0,Number(progress.score)||0);
+  });
+  const sorted=[...players].sort((a,b)=>b.damage-a.damage||b.kills-a.kills);
+  if(lastNetworkMode==='coop'){
+   const success=(battle?battle.totalKills:0)>=(battle?battle.escaped:0);
+   els.champion.textContent=success
+    ?`🤝 合作防守成功！总击杀 ${battle?battle.totalKills:0}，逃脱 ${battle?battle.escaped:0}`
+    :`😮 合作防守失败！总击杀 ${battle?battle.totalKills:0}，逃脱 ${battle?battle.escaped:0}`;
+  }else{
+   const champion=sorted[0];
+   els.champion.textContent=`🏆 ${champion.name} 获得称号：野怪终结者`;
+   try{localStorage.setItem('lottery_tower_champion',champion.name);}catch(e){}
+  }
+  els.finalRanking.innerHTML=sorted.map((p,i)=>`<li>${i+1}. ${p.name} — 总伤害 ${Math.round(p.damage)} / ${p.kills}杀 / ${p.score}分</li>`).join('');
+ };
+ const finalize=async()=>{
+  try{
+   if(networkArena&&networkArena.pushProgress)await networkArena.pushProgress();
+   if(networkArena&&networkArena.refresh)await networkArena.refresh();
+  }catch(e){}
+  showResult();
+ };
+ finalize();
 }
 buildSetup();
  els.tenBtn.addEventListener('click',()=>spinTen(controlled()));

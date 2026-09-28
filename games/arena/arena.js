@@ -383,6 +383,7 @@ window.ChallengeArena = (function () {
         state.seat = data.seat;
         state.name = data.name;
         applyState(data.state);
+        return data.state;
       } catch (_) {}
     }
 
@@ -418,6 +419,11 @@ window.ChallengeArena = (function () {
       await request("/restart", { token: state.token });
       state.lastProgress = "";
       Promise.resolve(cfg.onRestart()).catch(console.error);
+    }
+
+    async function refresh() {
+      await poll();
+      return state.stateData;
     }
 
     async function refreshQueue() {
@@ -459,6 +465,7 @@ window.ChallengeArena = (function () {
 
     return {
       pushProgress, restart,
+      refresh,
       player: () => ({ name: state.name, seat: state.seat }),
       players: () => state.stateData ? state.stateData.players.slice() : [],
     };
