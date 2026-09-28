@@ -15,7 +15,7 @@ import quiz
 
 
 HOST = os.environ.get("HOST", "0.0.0.0")
-PORT = int(os.environ.get("PORT", "8765"))
+PORT = int(os.environ.get("PORT", "8766"))
 
 WORLD_WIDTH = 960
 WORLD_HEIGHT = 600
