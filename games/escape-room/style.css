@@ -7,6 +7,7 @@ body {
   padding: 20px;
 }
 .screen { width: min(94vw, 640px); text-align: center; }
+.hidden { display: none !important; }
 h1 { font-size: 1.9rem; letter-spacing: 2px; text-shadow: 0 0 24px rgba(167,139,250,.6); }
 .sub { color: #b9a8e8; margin: 6px 0 14px; }
 .story, .story b { line-height: 1.9; color: #cfc4f5; }

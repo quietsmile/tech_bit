@@ -354,4 +354,7 @@
   els.startBtn.addEventListener('click', start);
   els.failRetry.addEventListener('click', start);
   els.winRetry.addEventListener('click', start);
+
+  /* 进入页面直接开始，避免多余的手动点击 */
+  start();
 })();
