@@ -179,10 +179,12 @@
     }
     stateAt = performance.now();
 
-    const waiting = state.phase === 'lobby' || (state.mode !== 'solo' && state.players.length < 2);
+    const waiting = state.phase === 'lobby';
     if (waiting) {
-      overlayTitle.textContent = state.mode === 'solo' ? '单人挑战已就绪' : '等待玩家加入（2–6 人）';
-      overlayDesc.textContent = state.mode === 'solo' ? '按方向键连续移动，先到 🏁 就完成。' : '公共大厅正在等候玩家，准备好后点击开始比赛。';
+      overlayTitle.textContent = state.mode === 'solo' ? '单人挑战已就绪' : `联机大厅已就绪（当前 ${state.players.length}/6 人）`;
+      overlayDesc.textContent = state.mode === 'solo'
+        ? '按方向键连续移动，先到 🏁 就完成。'
+        : '可以继续等玩家加入，也可以直接点击开始比赛。';
       overlayBtn.textContent = '▶ 开始比赛';
       overlayBtn.classList.remove('hidden');
       overlay.classList.remove('hidden');
