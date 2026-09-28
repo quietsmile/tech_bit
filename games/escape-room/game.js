@@ -301,8 +301,9 @@
   /* ===== 关4 · 时钟密码 ===== */
   function setupL4() {
     S.clock.h = 12; S.clock.m = 0;
-    S.clock.th = 1 + ri(12);
-    S.clock.tm = ri(12) * 5;
+    /* 不出整点；也避开初始的 12 点，保证时、分都要调整。 */
+    S.clock.th = 1 + ri(11);
+    S.clock.tm = 5 + ri(11) * 5;
     els.clockTip.innerHTML = '⏰ 大门上的密码锁：把时钟拨到 <b>' + S.clock.th + ' 点 ' + (S.clock.tm < 10 ? '0' : '') + S.clock.tm + ' 分</b>，门就会打开！';
     paintClock();
   }
