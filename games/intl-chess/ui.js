@@ -46,10 +46,15 @@ function sideName(side) { return side === 'w' ? '白方' : '黑方'; }
 
 function updateStatus(extra) {
   const el = document.getElementById('status');
-  if (extra) { el.textContent = extra; return; }
+  if (extra) {
+    el.textContent = extra;
+    updateEvaluation();
+    return;
+  }
   let text = sideName(turn) + '行棋';
   if (isInCheck(pos, turn)) text += '（将军！）';
   el.textContent = text;
+  updateEvaluation();
 }
 
 function formatEvaluation(score) {

@@ -265,6 +265,7 @@
   function updateInfo() {
     turnEl.textContent = gameOver ? '对局结束' : (current === 1 ? '黑方行棋' : '白方行棋');
     capEl.textContent = '黑提 ' + captures[1] + ' · 白提 ' + captures[2];
+    updateEvaluation();
   }
 
   function formatEvaluation(score) {

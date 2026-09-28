@@ -40,11 +40,16 @@ function newGame() {
 
 function updateStatus(extra) {
   const el = document.getElementById('status');
-  if (extra) { el.textContent = extra; return; }
+  if (extra) {
+    el.textContent = extra;
+    updateEvaluation();
+    return;
+  }
   const name = turn === 'red' ? '红方' : '黑方';
   let text = `${name}行棋`;
   if (isAttacked(board, turn)) text += '（将军！）';
   el.textContent = text;
+  updateEvaluation();
 }
 
 function formatEvaluation(score) {

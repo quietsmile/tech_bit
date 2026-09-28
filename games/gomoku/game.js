@@ -188,6 +188,7 @@
     statusEl.textContent = mode === "pve"
       ? (currentPlayer === 1 ? "当前回合：你（黑棋）" : "电脑思考中…")
       : "当前回合：" + (currentPlayer === 1 ? "黑棋" : "白棋");
+    updateEvaluation();
   }
 
   function formatEvaluation(score) {
