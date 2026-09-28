@@ -10,6 +10,7 @@ let mode = null; // 'ai' | 'pvp'
 let difficulty = 'normal';
 let aiThinking = false;
 let aiToken = 0;
+let evaluationOverride = null;
 
 function showStart() {
   mode = null;
@@ -30,8 +31,10 @@ function newGame() {
   history = [];
   lastMove = null;
   gameOver = false;
+  evaluationOverride = null;
   clearHints();
   updateStatus();
+  updateEvaluation();
   render();
 }
 
@@ -42,6 +45,18 @@ function updateStatus(extra) {
   let text = `${name}行棋`;
   if (isAttacked(board, turn)) text += '（将军！）';
   el.textContent = text;
+}
+
+function formatEvaluation(score) {
+  return score > 0 ? `+${score}` : String(score);
+}
+
+function updateEvaluation() {
+  const el = document.getElementById('evalInfo');
+  const score = evaluationOverride === null
+    ? Math.round(Math.tanh(aiEvaluate(board) / 2400) * 9800)
+    : evaluationOverride;
+  el.textContent = `系统评估（红方）：${formatEvaluation(score)} / ±10000`;
 }
 
 function scheduleAiMove() {
@@ -115,11 +130,15 @@ function checkEnd() {
   if (!hasAnyLegalMove(board, next)) {
     const winner = next === 'red' ? '黑方' : '红方';
     gameOver = true;
+    evaluationOverride = winner === 'red' ? 10000 : -10000;
     updateStatus(`将死！${winner}获胜 🎉`);
+    updateEvaluation();
     showResult(winner);
   } else if (!findGeneral(board, next)) {
     gameOver = true;
+    evaluationOverride = next === 'red' ? -10000 : 10000;
     updateStatus(`${next === 'red' ? '红方' : '黑方'}将被吃，对方获胜`);
+    updateEvaluation();
     showResult(next === 'red' ? '黑方' : '红方');
   } else {
     updateStatus();
@@ -160,8 +179,10 @@ function undo() {
   }
   board = last.board; turn = last.turn; selected = null; gameOver = false; aiThinking = false;
   lastMove = last.from ? { from: last.from, to: last.to } : null;
+  evaluationOverride = null;
   aiToken++; // 取消尚未执行的电脑走子
   clearHints(); render(); updateStatus();
+  updateEvaluation();
 }
 
 /* ---- 绘制 ---- */

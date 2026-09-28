@@ -11,6 +11,7 @@
   var difficulty = "normal";
   var stats = { win: 0, lose: 0, draw: 0 };
   var aiTimer = null;
+  var evaluationOverride = null;
 
   var startScreen = document.getElementById("startScreen");
   var gameScreen = document.getElementById("gameScreen");
@@ -37,6 +38,7 @@
     currentPlayer = 1;
     gameOver = false;
     aiThinking = false;
+    evaluationOverride = null;
   }
 
   function createBoardElement() {
@@ -111,6 +113,8 @@
 
   function finishGame(winner) {
     statusEl.textContent = "游戏结束";
+    evaluationOverride = winner === 1 ? 10000 : winner === 2 ? -10000 : 0;
+    updateEvaluation();
     if (mode === "pve") {
       if (winner === 1) {
         stats.win += 1;
@@ -186,6 +190,50 @@
       : "当前回合：" + (currentPlayer === 1 ? "黑棋" : "白棋");
   }
 
+  function formatEvaluation(score) {
+    return score > 0 ? "+" + score : String(score);
+  }
+
+  function updateEvaluation() {
+    var score = evaluationOverride === null
+      ? Math.round(Math.tanh(evaluateBoard() / 2200) * 9800)
+      : evaluationOverride;
+    document.getElementById("evalInfo").textContent =
+      "系统评估（黑棋）：" + formatEvaluation(score) + " / ±10000";
+  }
+
+  function evaluateBoard() {
+    var score = 0;
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        var player = board[r][c];
+        var sameAbove = r > 0 && board[r - 1][c] === player;
+        var sameLeft = c > 0 && board[r][c - 1] === player;
+        var sameUpLeft = r > 0 && c > 0 && board[r - 1][c - 1] === player;
+        var sameUpRight = r > 0 && c < SIZE - 1 && board[r - 1][c + 1] === player;
+        if (!player || sameAbove || sameLeft || sameUpLeft || sameUpRight) continue;
+        for (var i = 0; i < DIRECTIONS.length; i++) {
+          var dr = DIRECTIONS[i][0], dc = DIRECTIONS[i][1];
+          var count = 0, nr = r, nc = c;
+          while (inBoard(nr, nc) && board[nr][nc] === player) {
+            count++;
+            nr += dr;
+            nc += dc;
+          }
+          var open = 0;
+          if (inBoard(r - dr, c - dc) && board[r - dr][c - dc] === 0) open++;
+          if (inBoard(nr, nc) && board[nr][nc] === 0) open++;
+          var value = count >= 5 ? 9800
+            : count === 4 ? (open >= 2 ? 8200 : 2600)
+            : count === 3 ? (open >= 2 ? 2100 : 600)
+            : count === 2 ? (open >= 2 ? 350 : 90) : 12;
+          score += player === 1 ? value : -value;
+        }
+      }
+    }
+    return score;
+  }
+
   function updateButtons() {
     undoBtn.disabled = moves.length === 0 || gameOver || aiThinking;
     restartBtn.disabled = moves.length === 0 && !gameOver;
@@ -203,6 +251,7 @@
       currentPlayer = currentPlayer === 1 ? 2 : 1;
     }
     clearResult();
+    updateEvaluation();
     updateStatus();
     updateButtons();
   }

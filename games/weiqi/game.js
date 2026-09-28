@@ -9,6 +9,7 @@
   var aiLevel = document.getElementById('aiLevel').value || 'normal';
   var board, current, passes, captures, history, koStr, gameOver, mode;
   var lastMove = null; // {r,c} 或 'pass'
+  var evaluationOverride = null;
 
   var canvas = document.getElementById('board');
   var ctx = canvas.getContext('2d');
@@ -103,6 +104,7 @@
     history = [keyOf(board)];
     koStr = '';
     gameOver = false;
+    evaluationOverride = null;
     lastMove = null;
     resultEl.classList.add('hidden');
     boardEl.classList.remove('hidden');
@@ -123,6 +125,7 @@
     lastMove = { r: r, c: c };
     current = current === 1 ? 2 : 1;
     updateInfo();
+    updateEvaluation();
     draw();
     if (mode === 'ai' && current === 2 && !gameOver) setTimeout(aiMove, 500);
   }
@@ -246,6 +249,7 @@
     var blackScore = stones[1] + terr[1];
     var whiteScore = stones[2] + terr[2] + KOMI;
     var winner = blackScore > whiteScore ? '黑棋胜' : '白棋胜';
+    evaluationOverride = blackScore > whiteScore ? 10000 : -10000;
     var diff = Math.abs(blackScore - whiteScore).toFixed(1);
     resultEl.classList.remove('hidden');
     resultEl.innerHTML = '<h2>🏁 终局</h2>' +
@@ -254,12 +258,59 @@
       '<button onclick="location.reload()">再来一局</button>';
     boardEl.classList.add('hidden');
     document.getElementById('controls').classList.add('hidden');
+    updateEvaluation();
   }
 
   /* ---------- 绘制 ---------- */
   function updateInfo() {
     turnEl.textContent = gameOver ? '对局结束' : (current === 1 ? '黑方行棋' : '白方行棋');
     capEl.textContent = '黑提 ' + captures[1] + ' · 白提 ' + captures[2];
+  }
+
+  function formatEvaluation(score) {
+    return score > 0 ? '+' + score : String(score);
+  }
+
+  function updateEvaluation() {
+    var score = evaluationOverride === null
+      ? Math.round(Math.tanh(estimateScore() / (N * N / 3)) * 9800)
+      : evaluationOverride;
+    scoreEl.textContent = '系统评估（黑棋）：' + formatEvaluation(score) + ' / ±10000';
+  }
+
+  function estimateScore() {
+    var stones = { 1: 0, 2: 0 };
+    var territory = { 1: 0, 2: 0 };
+    var liberties = { 1: 0, 2: 0 };
+    var visited = {};
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) stones[board[r][c]]++;
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++) {
+      if (board[r][c]) {
+        var own = groupInfo(board, r, c);
+        liberties[board[r][c]] += Math.min(own.libs, 4);
+      } else if (!visited[r + ',' + c]) {
+        var region = [], stack = [[r, c]], touch = {};
+        visited[r + ',' + c] = 1;
+        while (stack.length) {
+          var cur = stack.pop();
+          region.push(cur);
+          neighbors(cur[0], cur[1]).forEach(function (n) {
+            var v = board[n[0]][n[1]], k = n[0] + ',' + n[1];
+            if (!v) {
+              if (!visited[k]) {
+                visited[k] = 1;
+                stack.push([n[0], n[1]]);
+              }
+            } else touch[v] = 1;
+          });
+        }
+        if (touch[1] && !touch[2]) territory[1] += region.length;
+        else if (touch[2] && !touch[1]) territory[2] += region.length;
+      }
+    }
+    var raw = stones[1] - stones[2] + territory[1] - territory[2] +
+      (liberties[1] - liberties[2]) * .18 + captures[1] - captures[2] - KOMI;
+    return raw;
   }
 
   function draw() {

@@ -13,6 +13,11 @@ body {
 h1 { font-size: 26px; letter-spacing: 6px; }
 .toolbar { display: flex; gap: 12px; align-items: center; }
 #status { font-size: 18px; min-width: 180px; text-align: center; }
+#evalInfo {
+  min-width: 240px; padding: 7px 14px; border-radius: 999px;
+  background: rgba(10, 18, 28, .72); border: 1px solid rgba(148, 184, 220, .24);
+  font-size: 14px; font-weight: 700; color: #dbeafe;
+}
 button {
   padding: 8px 20px;
   font-size: 15px;

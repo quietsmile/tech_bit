@@ -11,6 +11,7 @@ let difficulty = 'normal';
 let aiThinking = false;
 let aiToken = 0;
 let lastMove = null;
+let evaluationOverride = null;
 
 const CELL = 64;
 const SIZE = CELL * 8;
@@ -33,8 +34,10 @@ function newGame() {
   lastMove = null;
   gameOver = false;
   aiThinking = false;
+  evaluationOverride = null;
   clearMarks();
   updateStatus();
+  updateEvaluation();
   render();
 }
 
@@ -47,6 +50,18 @@ function updateStatus(extra) {
   let text = sideName(turn) + '行棋';
   if (isInCheck(pos, turn)) text += '（将军！）';
   el.textContent = text;
+}
+
+function formatEvaluation(score) {
+  return score > 0 ? `+${score}` : String(score);
+}
+
+function updateEvaluation() {
+  const el = document.getElementById('evalInfo');
+  const score = evaluationOverride === null
+    ? Math.round(Math.tanh(aiEvaluate(pos) / 2400) * 9800)
+    : evaluationOverride;
+  el.textContent = `系统评估（白方）：${formatEvaluation(score)} / ±10000`;
 }
 
 function scheduleAiMove() {
@@ -83,10 +98,14 @@ function checkEnd() {
   gameOver = true;
   if (isInCheck(pos, turn)) {
     const winner = turn === 'w' ? '黑方' : '白方';
+    evaluationOverride = winner === '白方' ? 10000 : -10000;
     updateStatus(`将杀！${winner}获胜 🎉`);
+    updateEvaluation();
     showResult(winner);
   } else {
+    evaluationOverride = 0;
     updateStatus('逼和（无子可动）');
+    updateEvaluation();
     showResult(null);
   }
 }
@@ -118,8 +137,10 @@ function undo() {
   if (mode === 'ai' && history.length) last = history.pop();
   pos = last.pos; turn = last.turn; selected = null; gameOver = false; aiThinking = false;
   lastMove = last.from ? { from: last.from, to: last.to } : null;
+  evaluationOverride = null;
   aiToken++;
   clearMarks(); render(); updateStatus();
+  updateEvaluation();
 }
 
 /* ---- 绘制 ---- */

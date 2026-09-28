@@ -28,6 +28,7 @@
   #board { background: #dcb35c; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-width: 94vw; cursor: pointer; }
   .info-row { display: flex; gap: 18px; margin: 10px 0 4px; font-size: 1rem; }
   .info-row b { color: #4ade80; }
+  #scoreInfo { color: #a5f3c8; font-weight: 800; }
   #controls { display: flex; gap: 12px; margin: 10px 0; }
   #controls button { padding: 8px 20px; border: none; border-radius: 8px; background: #2f5c40; color: #e8f2ea; cursor: pointer; }
   #msg { min-height: 20px; color: #fca5a5; font-weight: 700; }
@@ -66,6 +67,7 @@
   <div class="info-row">
     <span id="turnInfo">黑方行棋</span>
     <span id="capInfo">黑提 0 · 白提 0</span>
+    <span id="scoreInfo">系统评估（黑棋）：0 / ±10000</span>
   </div>
   <div id="msg" style="min-height:20px"></div>
   <div id="boardWrap">
