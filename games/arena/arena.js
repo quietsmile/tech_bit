@@ -66,6 +66,7 @@ window.ChallengeArena = (function () {
       token: localStorage.getItem(storageKey) || "",
       seat: -1,
       name: "",
+      stateData: null,
       syncing: false,
       pushing: false,
       stateData: null,
@@ -227,7 +228,7 @@ window.ChallengeArena = (function () {
       renameBox.classList.toggle("hidden", state.seat < 0 || !cfg.allowRename);
 
       if (typeof cfg.renderLobbySettings === "function") {
-        const settingsKey = `${isHost ? "host" : "guest"}:${stateData.targetPlayers}:${stateData.started}`;
+        const settingsKey = `${isHost ? "host" : "guest"}:${stateData.targetPlayers}:${stateData.started}:${stateData.config?.mode || "pk"}`;
         if (settingsEl.dataset.settingsKey !== settingsKey) {
           settingsEl.dataset.settingsKey = settingsKey;
           cfg.renderLobbySettings(settingsEl, stateData, isHost);
@@ -249,10 +250,11 @@ window.ChallengeArena = (function () {
     }
 
     function renderBoard(stateData) {
-      boardPanel.innerHTML = stateData.players.map(player => `
+      const rows = stateData.players.slice().sort((a,b)=>(b.progress?.damage||0)-(a.progress?.damage||0));
+      boardPanel.innerHTML = rows.map((player,index) => `
         <div class="arena-board-row">
-          <span>${escapeHtml(player.name)}${player.seat === state.seat ? "（我）" : ""}</span>
-          <span>${Number(player.progress?.score || 0)}分 / L${Number(player.progress?.level || 0) + 1}</span>
+          <span>${index+1}. ${escapeHtml(player.name)}${player.seat === state.seat ? "（我）" : ""}</span>
+          <span>${Number(player.progress?.damage || 0)}伤 / ${Number(player.progress?.score || 0)}分</span>
         </div>
       `).join("");
     }
@@ -274,6 +276,7 @@ window.ChallengeArena = (function () {
 
       renderLobby(stateData);
       renderBoard(stateData);
+      state.stateData = stateData;
 
       const me = stateData.players.find(player => player.seat === state.seat);
       const shouldBegin = stateData.started && state.seat >= 0 && !state.begun &&
@@ -448,7 +451,11 @@ window.ChallengeArena = (function () {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
     else init();
 
-    return { pushProgress, restart, player: () => ({ name: state.name, seat: state.seat }) };
+    return {
+      pushProgress, restart,
+      player: () => ({ name: state.name, seat: state.seat }),
+      players: () => state.stateData ? state.stateData.players.slice() : [],
+    };
   }
 
   return { create };

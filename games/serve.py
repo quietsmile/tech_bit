@@ -544,6 +544,9 @@ class Handler(SimpleHTTPRequestHandler):
                             "status": str(progress.get("status", "playing"))[:24],
                             "score": max(0, int(progress.get("score", 0) or 0)),
                             "level": max(0, int(progress.get("level", 0) or 0)),
+                            "kills": max(0, int(progress.get("kills", 0) or 0)),
+                            "damage": max(0, int(progress.get("damage", 0) or 0)),
+                            "mode": str(progress.get("mode", "pk"))[:12],
                         }
                         if client.get("progress") != clean:
                             client["progress"] = clean

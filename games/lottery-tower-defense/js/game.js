@@ -4,6 +4,7 @@ const $=id=>document.getElementById(id);
 const els={
  setup:$('setup'),game:$('game'),result:$('result'),playerSetup:$('playerSetup'),playerCount:$('playerCount'),durationInput:$('durationInput'),startBtn:$('startBtn'),
  battleCanvas:$('battleCanvas'),wheelCanvas:$('wheelCanvas'),battleMsg:$('battleMsg'),timeLeft:$('timeLeft'),waveNum:$('waveNum'),totalKills:$('totalKills'),escaped:$('escaped'),
+ modeLabel:$('modeLabel'),
  playerTabs:$('playerTabs'),controlledName:$('controlledName'),coins:$('coins'),level:$('level'),unitCount:$('unitCount'),kills:$('kills'),damage:$('damage'),
  spinBtn:$('spinBtn'),upgradeBtn:$('upgradeBtn'),inventory:$('inventory'),ranking:$('ranking'),pauseBtn:$('pauseBtn'),
  tenBtn:$('tenBtn'),tenResult:$('tenResult'),tenList:$('tenList'),tenClose:$('tenClose'),
@@ -14,6 +15,7 @@ const els={
 const COLORS=['#38bdf8','#f472b6','#4ade80','#facc15'];
 let players=[],battle=null,wheel=null,selected=0,running=false,paused=false,timeLeft=180,lastTs=null,wheelBusy=false,resultShown=false,debugLoops=0;
 let networkMode=false,networkSeat=-1,networkArena=null,lastNetworkRoster=null,lastNetworkDuration=180;
+let lastNetworkMode='pk';
 const aiTimers=new Map();
 let lastInventoryKey='';
 let placingIndex=null;
@@ -32,10 +34,12 @@ function makePlayer(i,type='human'){
    score:0,kills:0,damage:0,inventory:[],deployed:0,spins:0,aiCd:1+Math.random()};
 }
 function startGame(options={}){
+ const mode=options.mode==='coop'?'coop':'pk';
  if(options.players&&options.players.length){
   networkMode=true;networkSeat=Number(options.seat)||0;
   lastNetworkRoster=options.players.slice();
   lastNetworkDuration=Math.max(60,Math.min(600,Number(options.duration)||180));
+  lastNetworkMode=mode;
   players=options.players.map((item,i)=>{
    const p=makePlayer(i,'human');
    p.name=item.name||`玩家${i+1}`;
@@ -43,8 +47,9 @@ function startGame(options={}){
    return p;
   });
   selected=Math.max(0,players.findIndex(p=>p.seat===networkSeat));
- }else{
+  }else{
   networkMode=false;networkSeat=-1;
+  lastNetworkMode=mode;
   const rows=[...els.playerSetup.querySelectorAll('.setup-row')];
   players=rows.map((row,i)=>{const p=makePlayer(i,'human');p.name=row.querySelector('[data-name]').value.trim()||`玩家${i+1}`;return p;});
   timeLeft=Math.max(60,Math.min(600,Number(els.durationInput.value)||180));
@@ -208,17 +213,39 @@ function updateHUD(){
  els.spinBtn.textContent=wheelBusy?'🎰 转盘旋转中…':`🎰 抽奖（${CONFIG.spinCost}金）`;
  els.tenBtn.textContent=wheelBusy?'🌟 10连抽旋转中…':`🌟 10连抽（${CONFIG.spinCost*10}金）`;
  els.upgradeBtn.textContent=p.level>=CONFIG.maxLevel?'⬆️ 奖池已满级':`⬆️ 升级奖池（${CONFIG.levelUpCost(p.level)}金）`;
- const sorted=[...players].sort(rankCompare);
- els.ranking.innerHTML=sorted.map((p,i)=>`<li>${i+1}. ${p.name} · ${p.kills}杀 · ${Math.round(p.damage)}伤</li>`).join('');
+ const remote=new Map();
+ if(networkMode&&networkArena&&typeof networkArena.players==='function'){
+  networkArena.players().forEach(item=>remote.set(Number(item.seat),item.progress||{}));
+ }
+ const sorted=players.map(p=>{
+  const progress=networkMode?remote.get(p.seat)||{}:{};
+  const isSelf=!networkMode||p.seat===networkSeat;
+  return {
+   name:p.name,
+   kills:isSelf?p.kills:Math.max(0,Number(progress.kills)||0),
+   damage:isSelf?p.damage:Math.max(0,Number(progress.damage)||0)
+  };
+ }).sort((a,b)=>b.damage-a.damage||b.kills-a.kills);
+ els.modeLabel.textContent=lastNetworkMode==='coop'?'合作':'PK';
+ els.ranking.innerHTML=sorted.map((p,i)=>`<li>${i+1}. ${p.name} · 总伤害 ${Math.round(p.damage)} · ${p.kills}杀</li>`).join('');
 }
 function render(){if(battle)battle.render();if(wheel)wheel.draw();}
 function endGame(){
  running=false;wheelBusy=false;SFX.gameEnd();
- const sorted=[...players].sort(rankCompare);const champion=sorted[0];
  els.game.classList.add('hidden');els.result.classList.remove('hidden');
- els.champion.textContent=`🏆 ${champion.name} 获得称号：野怪终结者`;
- els.finalRanking.innerHTML=sorted.map((p,i)=>`<li>${i+1}. ${p.name} — ${p.kills}杀 / ${Math.round(p.damage)}伤 / ${p.score}分</li>`).join('');
- try{localStorage.setItem('lottery_tower_champion',champion.name);}catch(e){}
+ const sorted=[...players].sort((a,b)=>b.damage-a.damage||b.kills-a.kills);
+ if(lastNetworkMode==='coop'){
+  const success=(battle?battle.totalKills:0)>=(battle?battle.escaped:0);
+  els.champion.textContent=success
+   ?`🤝 合作防守成功！总击杀 ${battle?battle.totalKills:0}，逃脱 ${battle?battle.escaped:0}`
+   :`😮 合作防守失败！总击杀 ${battle?battle.totalKills:0}，逃脱 ${battle?battle.escaped:0}`;
+ }else{
+  const champion=sorted[0];
+  els.champion.textContent=`🏆 ${champion.name} 获得称号：野怪终结者`;
+  try{localStorage.setItem('lottery_tower_champion',champion.name);}catch(e){}
+ }
+ els.finalRanking.innerHTML=sorted.map((p,i)=>`<li>${i+1}. ${p.name} — 总伤害 ${Math.round(p.damage)} / ${p.kills}杀 / ${p.score}分</li>`).join('');
+ if(networkArena&&networkArena.pushProgress)networkArena.pushProgress();
 }
 buildSetup();
  els.tenBtn.addEventListener('click',()=>spinTen(controlled()));
@@ -251,13 +278,13 @@ els.upgradeBtn.addEventListener('click',()=>upgrade(controlled()));
 els.pauseBtn.addEventListener('click',()=>{if(!battle)return;paused=!paused;els.pauseBtn.textContent=paused?'继续':'暂停';});
 els.restartBtn.addEventListener('click',()=>{
  els.result.classList.add('hidden');
- if(lastNetworkRoster)startGame({players:lastNetworkRoster,seat:networkSeat,duration:lastNetworkDuration});
+ if(lastNetworkRoster)startGame({players:lastNetworkRoster,seat:networkSeat,duration:lastNetworkDuration,mode:lastNetworkMode});
  else startGame();
 });
 els.resultHome.addEventListener('click',()=>location.href='../index.html');
 setInterval(()=>{loop(performance.now());},16);
 
- window.LotteryArena=ChallengeArena.create({
+ networkArena=ChallengeArena.create({
  gameId:'lottery-td',
  gameName:'抽奖塔防大作战',
  allowRename:false,
@@ -272,27 +299,43 @@ setInterval(()=>{loop(performance.now());},16);
  renderLobbySettings(container,state,isHost){
   container.innerHTML=`
    <div class="arena-setting">
+    <label>对战模式</label>
+    <select id="tdLobbyMode">
+     <option value="pk" ${lastNetworkMode==='pk'?'selected':''}>PK模式 · 比个人伤害</option>
+     <option value="coop" ${lastNetworkMode==='coop'?'selected':''}>合作模式 · 共同防守</option>
+    </select>
+   </div>
+   <div class="arena-setting">
     <label>对局时长（秒）</label>
     <input id="tdLobbyDuration" type="number" min="60" max="600" step="30" value="${lastNetworkDuration}">
     <div class="arena-setting-note">所有玩家均为真人；人数满足后自动开始。</div>
    </div>`;
   const input=container.querySelector('#tdLobbyDuration');
   input.addEventListener('change',()=>{lastNetworkDuration=Math.max(60,Math.min(600,Number(input.value)||180));});
+  const mode=container.querySelector('#tdLobbyMode');
+  mode.addEventListener('change',()=>{lastNetworkMode=mode.value==='coop'?'coop':'pk';});
  },
- getTargetConfig(){return {duration:lastNetworkDuration};},
+ getTargetConfig(){return {duration:lastNetworkDuration,mode:lastNetworkMode};},
  onBegin(data){
   const source=(data.state&&data.state.players?data.state.players:[]).filter(p=>p.connected);
   const target=(data.state&&data.state.targetPlayers)||source.length;
   const roster=source.slice(0,target).map((p,i)=>({name:p.name,seat:p.seat}));
   if(!roster.some(p=>p.seat===data.seat))roster.push({name:data.name,seat:data.seat});
-  startGame({players:roster,seat:data.seat,duration:data.state&&data.state.config&&data.state.config.duration});
+  startGame({
+   players:roster,seat:data.seat,
+   duration:data.state&&data.state.config&&data.state.config.duration,
+   mode:data.state&&data.state.config&&data.state.config.mode
+  });
  },
  getProgress(){
   const p=controlled();
-  return {status:running?'playing':'finished',score:Math.round(p?p.score:0),level:p?p.level:1};
+  return {
+   status:running?'playing':'finished',score:Math.round(p?p.score:0),
+   level:p?p.level:1,kills:p?p.kills:0,damage:Math.round(p?p.damage:0),mode:lastNetworkMode
+  };
  },
  onRestart(){
-  if(lastNetworkRoster)startGame({players:lastNetworkRoster,seat:networkSeat,duration:lastNetworkDuration});
+  if(lastNetworkRoster)startGame({players:lastNetworkRoster,seat:networkSeat,duration:lastNetworkDuration,mode:lastNetworkMode});
  }
 });
 
