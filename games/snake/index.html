@@ -185,8 +185,7 @@
       <button id="btnSolo" class="menu-btn primary">🎮 单人游戏</button>
       <button id="btnShared" class="menu-btn">🌐 共同地图（1–6人）</button>
       <button id="btnPk" class="menu-btn">🎯 独立地图 PK（1–6人）</button>
-      <label class="id-label" for="playerIdInput">你的玩家 ID</label>
-      <input id="playerIdInput" class="player-id-input" maxlength="3" value="玩家1" autocomplete="off">
+      <input id="playerIdInput" class="hidden2" maxlength="12" value="玩家1" autocomplete="off">
       <div id="menuStatus"></div>
     </div>
   </div>
@@ -216,10 +215,8 @@
     }
     .join-row .menu-btn { width: auto; padding: 10px 16px; }
     #menuStatus { min-height: 18px; font-size: 0.85rem; color: #fca5a5; }
-    .id-label { color: #b8c8d8; font-size: .82rem; text-align: left; }
-    .player-id-input { width: 100%; padding: 10px 12px; border: 1px solid #46566d; border-radius: 8px; background: #0e1726; color: #fff; outline: none; }
     .hidden2 { display: none !important; }
   </style>
-  <script src="game.js?v=20260928-11"></script>
+  <script src="game.js?v=20260928-12"></script>
 </body>
 </html>

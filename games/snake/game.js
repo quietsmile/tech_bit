@@ -39,6 +39,15 @@
   var exitBtn = document.getElementById('exitBtn');
   var playerId = '玩家1';
 
+  function randomSnakeName() {
+    var heads = ['闪电', '旋风', '彩虹', '开心', '无敌', '勇敢', '飞毛腿', '神秘', '暖暖', '超级', '小小', '威武'];
+    var tails = ['小老虎', '小飞龙', '猎豹', '小熊猫', '企鹅', '小狮子', '海豚', '小飞侠', '星星', '小恐龙', '奥特曼', '小蜜蜂'];
+    var head = heads[Math.floor(Math.random() * heads.length)];
+    var tail = tails[Math.floor(Math.random() * tails.length)];
+    return (head + (head.endsWith('小') && tail.startsWith('小') ? tail.slice(1) : tail)).slice(0, 12);
+  }
+  playerIdInput.value = randomSnakeName();
+
   var mode = 'menu'; // menu | local | host | guest
   var onlineMode = 'shared'; // shared | pk
   var snake, dir, nextDir, food, score, speed, timer, state; // 单人模式
@@ -259,7 +268,7 @@
   }
 
   function start() {
-    playerId = (playerIdInput.value || '').trim().slice(0, 3) || '玩家1';
+    playerId = (playerIdInput.value || '').trim().slice(0, 12) || randomSnakeName();
     playerIdInput.value = playerId;
     var spawn = findSafeSpawn([]);
     snake = spawn.body;
@@ -1001,7 +1010,7 @@
     overlay.classList.remove('hidden');
     var stored = sessionStorage.getItem('snake_relay_token') || '';
     localStorage.removeItem('snake_relay_token');
-    playerId = (playerIdInput.value || '').trim().slice(0, 3) || '玩家1';
+    playerId = (playerIdInput.value || '').trim().slice(0, 12) || randomSnakeName();
     playerIdInput.value = playerId;
     function enterLobby(token, retried) {
       return postJSON('/api/relay/auto', { game: 'snake', token: token, player_id: playerId }).then(function (data) {
