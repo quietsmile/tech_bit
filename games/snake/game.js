@@ -13,10 +13,9 @@
   var spawnGrace = 0;
   var MAX_FOODS = 7;
   var FOOD_INTERVAL = 3;
-  var ONLINE_MAX_FOODS = 16;
+  var ONLINE_MAX_FOODS = 10;
   var ONLINE_FOOD_INTERVAL = 2;
-  var ONLINE_MAX_PLAYERS = 6;
-  var BASE_MS = 640;             // 初始速度再放慢一倍
+  var BASE_MS = 320;             // 初始速度（放慢 2 倍）
   var MIN_MS = 60;               // 最快速度
   var SPEEDUP = 3;               // doubled from the previous tuning
 
@@ -40,7 +39,6 @@
   var playerId = '玩家1';
 
   var mode = 'menu'; // menu | local | host | guest
-  var onlineMode = 'shared'; // shared | pk
   var snake, dir, nextDir, food, score, speed, timer, state; // 单人模式
   var best = parseInt(localStorage.getItem('snake_best') || '0', 10) || 0;
   bestEl.textContent = best;
@@ -59,16 +57,10 @@
     boostUntil: 0,
     pendingDir: null,
     guests: [],
+    guestSeats: {},
     playerId: '',
     playerIds: [],
-    lastGuestCount: -1,
-    mode: 'shared',
-    role: '',
-    roundId: '',
-    seed: 0,
-    pk: null,
-    scores: {},
-    statusTimer: null
+    lastGuestCount: -1
   };
   var seats = []; // 房主模式：所有蛇（座位 0=房主）
 
@@ -82,9 +74,7 @@
     { body: '#7bd88f', head: '#a4f0b7' },
     { body: '#7ec8ff', head: '#b3e0ff' },
     { body: '#fbbf24', head: '#fde68a' },
-    { body: '#f472b6', head: '#fbcfe8' },
-    { body: '#c084fc', head: '#e9d5ff' },
-    { body: '#fb923c', head: '#fed7aa' }
+    { body: '#f472b6', head: '#fbcfe8' }
   ];
   var SEAT_NAMES = ['绿蛇', '蓝蛇', '黄蛇', '粉蛇', '紫蛇', '橙蛇'];
   var SPAWNS = [
@@ -116,6 +106,13 @@
         '<span class="player-score">' + (player.score || 0) + '</span>' +
         '</div>';
     }).join('');
+  }
+
+  function updateOnlineBest(players) {
+    var highest = (players || []).reduce(function (bestScore, player) {
+      return Math.max(bestScore, Number(player.score) || 0);
+    }, 0);
+    bestEl.textContent = highest;
   }
 
   function drawCrown(x, y) {
@@ -413,7 +410,7 @@
   }
 
   /* ================= 联机·房主（权威端） ================= */
-  function makeSnake(cells, dir, id, seat) {
+  function makeSnake(cells, dir, id, seat, token) {
     return {
       body: cells.map(function (cell) { return { x: cell.x, y: cell.y }; }),
       dir: copyDir(dir),
@@ -422,7 +419,8 @@
       score: 0,
       spawnGrace: SPAWN_GRACE_TICKS,
       id: id || ('玩家' + ((seat || 0) + 1)),
-      seat: seat || 0
+      seat: seat || 0,
+      token: token || ''
     };
   }
 
@@ -491,114 +489,53 @@
     if (!sn.alive) return;
     sn.alive = false;
     spawnDeathLoot(sn);
+    sn.score = 0;
+    sn.body = [];
   }
 
-  function resetOnlineFoods(count) {
-    online.foods = [];
-    online.foodClock = 0;
-    while (online.foods.length < count) {
-      if (!spawnFoodOnline()) break;
-    }
-  }
-
-  function updateOnlineFoods(dt) {
-    online.foodClock += dt;
-    while (online.foodClock >= ONLINE_FOOD_INTERVAL) {
-      online.foodClock -= ONLINE_FOOD_INTERVAL;
-      if (online.foods.length < ONLINE_MAX_FOODS) spawnFoodOnline();
-      else break;
-    }
-  }
-
-  function mulberry32(seed) {
-    var value = seed >>> 0;
-    return function () {
-      value = (value + 0x6D2B79F5) >>> 0;
-      var t = value;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  function makeSnake(cells, dir, id, seat) {
-    return {
-      body: cells.map(function (cell) { return { x: cell.x, y: cell.y }; }),
-      dir: copyDir(dir),
-      nextDir: copyDir(dir),
-      alive: true,
-      score: 0,
-      spawnGrace: SPAWN_GRACE_TICKS,
-      id: id || ('玩家' + ((seat || 0) + 1)),
-      seat: seat || 0
-    };
-  }
-
-  function spawnFoodOnline() {
-    var taken = [];
-    seats.forEach(function (sn) { taken = taken.concat(sn.body); });
-    taken = taken.concat(online.foods || []);
-    var p;
-    var attempts = 220;
-    do {
-      p = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
-      attempts--;
-    } while (attempts > 0 && taken.some(function (s) { return s.x === p.x && s.y === p.y; }));
-    if (taken.some(function (s) { return s.x === p.x && s.y === p.y; })) return null;
-    var roll = Math.random();
-    var item = { x: p.x, y: p.y, type: roll < 0.12 ? 'boost' : roll < 0.30 ? 'big' : 'small',
-      value: roll < 0.12 ? 1 : roll < 0.30 ? 3 : 1 };
-    online.foods.push(item);
-    return item;
-  }
-
-  function deathLootPlan(scoreValue) {
-    if (scoreValue >= 40) return { small: 4, big: 4 };
-    if (scoreValue >= 25) return { small: 3, big: 3 };
-    if (scoreValue >= 15) return { small: 3, big: 2 };
-    if (scoreValue >= 8) return { small: 2, big: 2 };
-    return { small: 2, big: 1 };
-  }
-
-  function spawnDeathLoot(sn) {
-    var plan = deathLootPlan(sn.score || 0);
-    var anchor = sn.body[0] || { x: Math.floor(GRID / 2), y: Math.floor(GRID / 2) };
-    var offsets = [
-      { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 },
-      { x: 0, y: -1 }, { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 },
-      { x: -1, y: 1 }, { x: 2, y: 0 }, { x: -2, y: 0 }, { x: 0, y: 2 },
-      { x: 0, y: -2 }
-    ];
+  function restartOnlineSnake(sn) {
+    if (!sn) return;
     var occupied = [];
-    seats.forEach(function (other) { occupied = occupied.concat(other.body || []); });
-    occupied = occupied.concat(online.foods || []);
-    var values = [];
-    for (var big = 0; big < plan.big; big++) values.push(3);
-    for (var small = 0; small < plan.small; small++) values.push(1);
-    values.forEach(function (value, index) {
-      var order = offsets.slice(index).concat(offsets.slice(0, index));
-      var spot = order.find(function (offset) {
-        var x = anchor.x + offset.x;
-        var y = anchor.y + offset.y;
-        return x >= 0 && y >= 0 && x < GRID && y < GRID &&
-          !occupied.some(function (cell) { return cell.x === x && cell.y === y; });
-      });
-      if (!spot) return;
-      var item = {
-        x: anchor.x + spot.x,
-        y: anchor.y + spot.y,
-        type: value === 3 ? 'big' : 'small',
-        value: value
-      };
-      online.foods.push(item);
-      occupied.push(item);
+    seats.forEach(function (other) {
+      if (other !== sn && other.alive) occupied = occupied.concat(other.body || []);
     });
+    var spawn = findSafeSpawn(occupied);
+    sn.body = spawn.body;
+    sn.dir = copyDir(spawn.dir);
+    sn.nextDir = copyDir(spawn.dir);
+    sn.spawnGrace = SPAWN_GRACE_TICKS;
+    sn.alive = true;
+    online.finished = false;
+    if (sn.token === online.token) overlay.classList.add('hidden');
   }
 
-  function killOnlineSnake(sn) {
-    if (!sn.alive) return;
-    sn.alive = false;
-    spawnDeathLoot(sn);
+  function snakeForToken(token) {
+    return seats.find(function (sn) { return sn.token === token; });
+  }
+
+  function syncHostPlayers() {
+    var host = snakeForToken(online.token);
+    if (!host) {
+      var hostSpawn = findSafeSpawn([]);
+      seats.unshift(makeSnake(hostSpawn.body, hostSpawn.dir,
+        online.playerId || playerId || '玩家1', 0, online.token));
+    }
+    online.guests.forEach(function (guestToken) {
+      if (snakeForToken(guestToken)) return;
+      var occupied = [];
+      seats.forEach(function (sn) { if (sn.alive) occupied = occupied.concat(sn.body || []); });
+      var seat = online.guestSeats[guestToken] || 1;
+      var spawn = findSafeSpawn(occupied);
+      seats.push(makeSnake(spawn.body, spawn.dir,
+        online.playerIds[seat] || ('玩家' + (seat + 1)), seat, guestToken));
+    });
+    seats = seats.filter(function (sn) {
+      return sn.token === online.token || online.guests.indexOf(sn.token) >= 0;
+    });
+    seats.sort(function (a, b) { return a.seat - b.seat; });
+    seats.forEach(function (sn) {
+      if (sn.seat > 0) sn.id = online.playerIds[sn.seat] || sn.id;
+    });
   }
 
   function resetOnlineFoods(count) {
@@ -620,47 +557,28 @@
 
   function hostScene() {
     return {
-      mode: 'shared',
       status: online.finished ? 'over' : 'playing',
       foods: online.foods,
-      snakes: seats.map(function (sn, idx) {
-        return { seat: idx, id: sn.id, body: sn.body, alive: sn.alive, score: sn.score };
+      snakes: seats.map(function (sn) {
+        return { seat: sn.seat, id: sn.id, body: sn.body, alive: sn.alive, score: sn.score };
       })
     };
   }
 
   function broadcast() {
-    var state = online.mode === 'pk' ? pkScene(false) : hostScene();
-    postJSON('/api/relay/state', { code: online.code, token: online.token, state: state })
+    postJSON('/api/relay/state', { code: online.code, token: online.token, state: hostScene() })
       .catch(function () {});
   }
 
-  function seatIdsForRound(count) {
-    var ids = online.playerIds && online.playerIds.length
-      ? online.playerIds.slice(0, count)
-      : [];
-    while (ids.length < count) {
-      ids.push(ids.length ? ('玩家' + (ids.length + 1)) : (online.playerId || playerId || '玩家1'));
-    }
-    return ids;
-  }
-
   function startHostRound() {
-    if (online.mode === 'pk') return startPkHostRound();
-    var guestCount = Math.min(online.guests.length, ONLINE_MAX_PLAYERS - 1);
     seats = [];
-    var occupied = [];
-    var seatIds = seatIdsForRound(guestCount + 1);
-    for (var g = 0; g <= guestCount; g++) {
-      var spawn = findSafeSpawn(occupied);
-      seats.push(makeSnake(spawn.body, spawn.dir, seatIds[g], g));
-      occupied = occupied.concat(spawn.body);
-    }
+    syncHostPlayers();
     online.speed = BASE_MS;
     online.boostUntil = 0;
     online.finished = false;
-    resetOnlineFoods(Math.min(ONLINE_MAX_FOODS, 8 + seats.length * 2));
+    resetOnlineFoods(Math.min(ONLINE_MAX_FOODS, 8));
     state = 'playing';
+    updateOnlineBest(seats);
     overlay.classList.add('hidden');
     pauseBtn.textContent = '暂停';
     updateOnlineFoods(currentOnlineSpeed() / 1000);
@@ -675,7 +593,7 @@
   }
 
   function hostTick() {
-    if (online.finished || online.mode !== 'shared') return;
+    if (online.finished) return;
     updateOnlineFoods(currentOnlineSpeed() / 1000);
     var i, j, sn;
     for (i = 0; i < seats.length; i++) { seats[i].dir = seats[i].nextDir; }
@@ -723,35 +641,22 @@
 
     scoreEl.textContent = seats[0].score;
     updateScoreboard(seats);
+    updateOnlineBest(seats);
+    var hostSnake = snakeForToken(online.token);
+    if (hostSnake && !hostSnake.alive) {
+      overlayTitle.textContent = '你的蛇被淘汰了';
+      overlayText.textContent = '本局分数已清零，重新开始后继续比赛';
+      overlayRestart.textContent = '重新开始';
+      overlayRestart.classList.remove('hidden');
+      overlay.classList.remove('hidden');
+    }
+    var bestOther = 0;
+    for (i = 1; i < seats.length; i++) bestOther = Math.max(bestOther, seats[i].score);
     if (rankListEl) {
       rankListEl.classList.remove('hidden');
       rankListEl.textContent = '实时排名：' + seats
-        .map(function (sn, idx) { return SEAT_NAMES[idx] + ' ' + sn.score + ' 分' + (sn.alive ? '' : '（淘汰）'); })
+        .map(function (sn) { return SEAT_NAMES[sn.seat] + ' ' + sn.score + ' 分' + (sn.alive ? '' : '（淘汰）'); })
         .join(' · ');
-    }
-
-    var anyAlive = seats.some(function (s) { return s.alive; });
-    if (!anyAlive && seats.length === 1) {
-      online.finished = false;
-      gameOver();
-      broadcast();
-      drawScene(hostScene());
-      if (online.timer) clearTimeout(online.timer);
-      return;
-    }
-    if (!anyAlive) {
-      online.finished = true;
-      broadcast();
-      drawScene(hostScene());
-      var ranking = seats.map(function (s, idx) {
-        return (idx + 1) + '号 ' + s.score + ' 分';
-      }).join(' · ');
-      overlayTitle.textContent = '比赛结束！';
-      overlayText.textContent = '排名：' + ranking;
-      overlayRestart.textContent = '再来一局';
-      overlayRestart.classList.remove('hidden');
-      overlay.classList.remove('hidden');
-      return;
     }
 
     drawScene(hostScene());
@@ -760,232 +665,27 @@
     online.timer = setTimeout(hostTick, currentOnlineSpeed());
   }
 
-  function pkRng(seed) { return mulberry32(seed); }
-
-  function createSeededFoods(seed, count) {
-    var rng = mulberry32(seed);
-    var foods = [];
-    var attempts = 0;
-    while (foods.length < count && attempts < count * 30) {
-      attempts++;
-      var x = 2 + Math.floor(rng() * (GRID - 4));
-      var y = 2 + Math.floor(rng() * (GRID - 4));
-      if (foods.some(function (food) { return food.x === x && food.y === y; })) continue;
-      var roll = rng();
-      foods.push({
-        x: x, y: y,
-        type: roll < 0.12 ? 'boost' : roll < 0.30 ? 'big' : 'small',
-        value: roll < 0.12 ? 1 : roll < 0.30 ? 3 : 1
-      });
-    }
-    return foods;
-  }
-
-  function pkSeatStatuses() {
-    var ids = seatIdsForRound(ONLINE_MAX_PLAYERS).slice(0, Math.max(1, online.guests.length + 1));
-    return ids.map(function (id, seat) {
-      var token = seat ? online.guests[seat - 1] : online.token;
-      var reported = online.scores[token] || {};
-      var own = online.pk && seat === online.mySeat ? online.pk : null;
-      return {
-        seat: seat, id: id,
-        score: own ? own.score : Number(reported.score || 0),
-        alive: own ? own.alive : reported.alive !== false
-      };
-    });
-  }
-
-  function pkScene(initial) {
-    return {
-      mode: 'pk',
-      roundId: online.roundId,
-      status: online.finished ? 'over' : 'playing',
-      seed: online.seed,
-      foods: initial ? online.pkInitialFoods : null,
-      players: pkSeatStatuses()
-    };
-  }
-
-  function startPkHostRound() {
-    online.roundId = 'pk-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-    online.seed = Math.floor(Math.random() * 2147483647);
-    online.pkInitialFoods = createSeededFoods(online.seed, Math.min(ONLINE_MAX_FOODS, 12));
-    online.scores = {};
-    online.finished = false;
-    if (online.timer) clearInterval(online.timer);
-    online.timer = setInterval(function () {
-      if (rankListEl) rankListEl.classList.remove('hidden');
-      var players = pkSeatStatuses();
-      updateScoreboard(players);
-      if (rankListEl) {
-        var rows = players.slice().sort(function (a, b) { return b.score - a.score; });
-        rankListEl.textContent = '独立地图 PK：' + rows
-          .map(function (p, idx) { return (idx + 1) + '. ' + p.id + ' ' + p.score + '分' + (p.alive ? '' : '（结束）'); })
-          .join(' · ');
-      }
-      broadcast();
-    }, 600);
-    var scene = pkScene(true);
-    startPkClient(scene);
-    broadcast();
-  }
-
-  function startPkClient(scene) {
-    var rng = pkRng(scene.seed ^ 0x9e3779b9);
-    var head = { x: Math.floor(GRID / 2), y: Math.floor(GRID / 2) };
-    var body = [head, { x: head.x - 1, y: head.y }, { x: head.x - 2, y: head.y }];
-    online.pk = {
-      roundId: scene.roundId,
-      foods: (scene.foods || []).map(function (food) { return { x: food.x, y: food.y, type: food.type, value: food.value }; }),
-      rng: mulberry32(scene.seed ^ 0x51ed270b),
-      body: body,
-      dir: { x: 1, y: 0 },
-      nextDir: { x: 1, y: 0 },
-      score: 0,
-      speed: BASE_MS,
-      boostUntil: 0,
-      spawnGrace: SPAWN_GRACE_TICKS,
-      alive: true,
-      over: false
-    };
-    void rng;
-    online.finished = false;
-    state = 'playing';
-    overlay.classList.add('hidden');
-    overlayRestart.classList.add('hidden');
-    pauseBtn.textContent = '暂停';
-    scoreEl.textContent = '0';
-    updateScoreboard(pkSeatStatuses());
-    drawPk();
-    if (online.timer) clearInterval(online.timer);
-    online.timer = setTimeout(pkTick, currentPkSpeed());
-    if (online.statusTimer) clearInterval(online.statusTimer);
-    online.statusTimer = setInterval(sendPkStatus, 900);
-    sendPkStatus();
-  }
-
-  function currentPkSpeed() {
-    var value = online.pk ? online.pk.speed : BASE_MS;
-    if (online.pk && online.pk.boostUntil > Date.now()) value *= 0.68;
-    return Math.max(MIN_MS, value);
-  }
-
-  function schedulePk() {
-    if (online.timer) clearTimeout(online.timer);
-    online.timer = setTimeout(pkTick, currentPkSpeed());
-  }
-
-  function setPkDir(x, y) {
-    if (!online.pk || online.pk.over || (x === -online.pk.dir.x && y === -online.pk.dir.y)) return;
-    online.pk.nextDir = { x: x, y: y };
-  }
-
-  function pkTick() {
-    var pk = online.pk;
-    if (!pk || pk.over) return;
-    pk.dir = pk.nextDir;
-    var head = { x: pk.body[0].x + pk.dir.x, y: pk.body[0].y + pk.dir.y };
-    var hitWall = head.x < 0 || head.y < 0 || head.x >= GRID || head.y >= GRID;
-    var hitSelf = pk.spawnGrace <= 0 && pk.body.some(function (cell) { return cell.x === head.x && cell.y === head.y; });
-    if (hitWall || hitSelf) { pkGameOver(); return; }
-    if (pk.spawnGrace > 0) pk.spawnGrace--;
-    pk.body.unshift(head);
-    var index = pk.foods.findIndex(function (food) { return food.x === head.x && food.y === head.y; });
-    if (index >= 0) {
-      var eaten = pk.foods.splice(index, 1)[0];
-      pk.score += eaten.value || 1;
-      pk.speed = Math.max(MIN_MS, pk.speed - SPEEDUP * (eaten.value || 1));
-      if (eaten.type === 'boost') pk.boostUntil = Date.now() + 5000;
-      var rng = pk.rng;
-      var food = null, attempts = 0;
-      while (!food && attempts < 100) {
-        attempts++;
-        var x = 2 + Math.floor(rng() * (GRID - 4));
-        var y = 2 + Math.floor(rng() * (GRID - 4));
-        if (!pk.body.some(function (cell) { return cell.x === x && cell.y === y; }) &&
-            !pk.foods.some(function (cell) { return cell.x === x && cell.y === y; })) {
-          var roll = rng();
-          food = { x: x, y: y, type: roll < 0.12 ? 'boost' : roll < 0.30 ? 'big' : 'small', value: roll < 0.12 ? 1 : roll < 0.30 ? 3 : 1 };
-        }
-      }
-      if (food) pk.foods.push(food);
-    } else {
-      pk.body.pop();
-    }
-    scoreEl.textContent = pk.score;
-    drawPk();
-    updateScoreboard(pkSeatStatuses());
-    sendPkStatus();
-    schedulePk();
-  }
-
-  function pkGameOver() {
-    var pk = online.pk;
-    if (!pk || pk.over) return;
-    pk.over = true;
-    pk.alive = false;
-    state = 'over';
-    if (online.timer) clearTimeout(online.timer);
-    sendPkStatus();
-    overlayTitle.textContent = '你的地图结束';
-    overlayText.textContent = '本图得分：' + pk.score + '　等待其他玩家结束…';
-    overlayRestart.classList.add('hidden');
-    overlay.classList.remove('hidden');
-  }
-
-  function sendPkStatus() {
-    var pk = online.pk;
-    if (!pk || mode !== 'guest') return;
-    postJSON('/api/relay/input', {
-      code: online.code,
-      token: online.token,
-      input: { pkStatus: { score: pk.score, alive: !pk.over } }
-    }).catch(function () {});
-  }
-
-  function drawPk() {
-    var pk = online.pk;
-    if (!pk) return;
-    drawScene({ mode: 'pk', foods: pk.foods, snakes: [{
-      seat: online.mySeat || 0, id: online.playerId || playerId,
-      body: pk.body, alive: !pk.over, score: pk.score
-    }] });
-  }
-
-  function pkScoresScene() {
-    return {
-      mode: 'pk', roundId: online.roundId,
-      status: online.finished ? 'over' : 'playing',
-      players: pkSeatStatuses()
-    };
-  }
-
   function pollHostInputs() {
     fetch(apiUrl('/api/relay/inputs?code=' + online.code + '&token=' + online.token))
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data.ok) return;
         online.guests = data.guests || [];
+        online.guestSeats = data.guest_seats || {};
         online.playerIds = data.player_ids || online.playerIds || [];
-        var guestCountChanged = online.guests.length !== online.lastGuestCount;
-        if (guestCountChanged && online.guests.length > 0) {
-          online.guestSeen = true;
-        }
-        if (guestCountChanged && online.guestSeen) {
-          startHostRound();
-        }
+        syncHostPlayers();
         online.lastGuestCount = online.guests.length;
         for (var i = 0; i < data.inputs.length; i++) {
           var wrapped = data.inputs[i];
           var input = wrapped && wrapped.input;
           if (!input || !wrapped.token) continue;
-          var seatIdx = online.guests.indexOf(wrapped.token) + 1;
-          if (online.mode === 'pk') {
-            if (input.pkStatus) online.scores[wrapped.token] = input.pkStatus;
+          if (input.restart) {
+            restartOnlineSnake(snakeForToken(wrapped.token));
             continue;
           }
           if (!input.dir) continue;
-          var sn = seats[seatIdx];
+          var seatIdx = online.guestSeats[wrapped.token] || 1;
+          var sn = snakeForToken(wrapped.token);
           if (!sn || !sn.alive) continue;
           if (input.dir[0] !== -sn.dir.x || input.dir[1] !== -sn.dir.y) sn.nextDir = { x: input.dir[0], y: input.dir[1] };
         }
@@ -999,6 +699,7 @@
     overlayTitle.textContent = '🌐 正在进入联机大厅…';
     overlayText.textContent = '';
     overlay.classList.remove('hidden');
+    bestEl.textContent = '0';
     var stored = sessionStorage.getItem('snake_relay_token') || '';
     localStorage.removeItem('snake_relay_token');
     playerId = (playerIdInput.value || '').trim().slice(0, 3) || '玩家1';
@@ -1024,23 +725,17 @@
       online.mySeat = data.seat || 0;
       online.playerId = data.player_id || playerId;
       online.playerIds = [];
-      online.mode = onlineMode;
-      online.role = data.role;
       if (data.role === 'host') {
         mode = 'host';
         online.guestSeen = false;
         online.lastGuestCount = -1;
         overlayTitle.textContent = '🌐 已进入联机大厅';
-        overlayText.textContent = online.mode === 'pk'
-          ? '你是房主 · 独立地图 PK（1–6人），稍后自动开局'
-          : '你是房主 · 共同地图（1–6人），稍后自动开局';
-        setTimeout(startHostRound, 1200);
+        overlayText.textContent = '你是房主，等待其他玩家加入，最多 4 人';
+        startHostRound();
         if (online.pollTimer) clearInterval(online.pollTimer);
         online.pollTimer = setInterval(pollHostInputs, 250);
       } else {
         mode = 'guest';
-        online.mode = onlineMode;
-        online.role = 'guest';
         online.mySeat = data.seat;
         overlayTitle.textContent = '🌐 已进入联机大厅';
         overlayText.textContent = '你控制 ' + data.seat + ' 号蛇（' + seatName(data.seat) + '）· 等待开局…';
@@ -1132,38 +827,8 @@
         if (data.version === online.version) return;
         online.version = data.version;
         var scene = data.state;
-        if (scene && scene.mode === 'pk') {
-          if (scene.roundId !== online.roundId) {
-            startPkClient(scene);
-          }
-          var pkPlayers = scene.players || [];
-          if (rankListEl) rankListEl.classList.remove('hidden');
-          var pkMine = pkPlayers.find(function (player) { return player.seat === online.mySeat; }) || { score: 0 };
-          scoreEl.textContent = pkMine.score;
-          updateScoreboard(pkPlayers);
-          if (rankListEl) {
-            var pkRows = pkPlayers.slice().sort(function (a, b) { return b.score - a.score; });
-            rankListEl.textContent = '独立地图 PK：' + pkRows
-              .map(function (player, index) { return (index + 1) + '. ' + player.id + ' ' + player.score + '分' + (player.alive ? '' : '（结束）'); })
-              .join(' · ');
-          }
-          if (scene.status === 'over') {
-            online.finished = true;
-            if (online.pk) online.pk.over = true;
-            state = 'over';
-            if (online.timer) clearTimeout(online.timer);
-            if (online.statusTimer) clearInterval(online.statusTimer);
-            var best = pkPlayers.slice().sort(function (a, b) { return b.score - a.score; })[0];
-            overlayTitle.textContent = '独立地图 PK结束';
-            overlayText.textContent = best ? ('🏆 ' + best.id + '：' + best.score + ' 分') : '比赛结束';
-            overlayRestart.classList.add('hidden');
-            overlay.classList.remove('hidden');
-          } else {
-            overlay.classList.add('hidden');
-          }
-          return;
-        }
         if (!scene) {
+          bestEl.textContent = '0';
           if (data.version === 0) {
             overlayTitle.textContent = '🌐 已进入联机大厅';
             overlayText.textContent = '等待房主开始游戏…';
@@ -1181,18 +846,25 @@
         }
         drawScene(scene);
         var mySeat = online.mySeat || 1;
-        var mine = scene.snakes[mySeat] || scene.snakes[1];
-        scoreEl.textContent = mine.score;
+        var mine = scene.snakes.find(function (sn) { return sn.seat === mySeat; }) || null;
+        scoreEl.textContent = mine ? mine.score : 0;
         updateScoreboard(scene.snakes);
+        updateOnlineBest(scene.snakes);
         if (rankListEl) {
           rankListEl.classList.remove('hidden');
           rankListEl.textContent = '实时排名：' + scene.snakes
-            .map(function (sn, idx) { return SEAT_NAMES[idx] + ' ' + sn.score + ' 分' + (sn.alive ? '' : '（淘汰）'); })
+            .map(function (sn) { return SEAT_NAMES[sn.seat] + ' ' + sn.score + ' 分' + (sn.alive ? '' : '（淘汰）'); })
             .join(' · ');
         }
-        if (scene.status === 'over') {
+        if (!mine || !mine.alive) {
+          overlayTitle.textContent = '你的蛇被淘汰了';
+          overlayText.textContent = '本局分数已清零，重新开始后继续比赛';
+          overlayRestart.textContent = '重新开始';
+          overlayRestart.classList.remove('hidden');
+          overlay.classList.remove('hidden');
+        } else if (scene.status === 'over') {
           var ranking = scene.snakes.map(function (sn, idx) {
-            return (idx + 1) + '号 ' + sn.score + ' 分';
+            return (sn.seat + 1) + '号 ' + sn.score + ' 分';
           }).join(' · ');
           overlayTitle.textContent = '比赛结束！';
           overlayText.textContent = '你（' + mySeat + '号蛇）：' + mine.score + ' 分　' + ranking;
@@ -1211,15 +883,17 @@
     postJSON('/api/relay/input', { code: online.code, token: online.token, input: { dir: dir } }).catch(function () {});
   }
 
+  function sendGuestRestart() {
+    if (!online.code || !online.token) return;
+    postJSON('/api/relay/input', {
+      code: online.code, token: online.token, input: { restart: true }
+    }).catch(function () {});
+  }
+
   function controlDirection(direction) {
     if (!direction) return;
     if (mode === 'guest') {
-      if (online.mode === 'pk') setPkDir(direction[0], direction[1]);
-      else sendGuestInput(direction);
-      return;
-    }
-    if (mode === 'host' && online.mode === 'pk') {
-      setPkDir(direction[0], direction[1]);
+      sendGuestInput(direction);
       return;
     }
     if (mode === 'host') {
@@ -1240,7 +914,7 @@
       online.token = data.token;
       online.mySeat = data.seat || 1;
       overlayTitle.textContent = '🌐 已加入房间 ' + code;
-      overlayText.textContent = '你控制蓝蛇（WASD / 滑动）· 等待房主开始…';
+      overlayText.textContent = '你控制蓝蛇（方向键 / WASD）· 等待房主开始…';
       overlayRestart.classList.add('hidden');
       overlay.classList.remove('hidden');
       if (online.pollTimer) clearInterval(online.pollTimer);
@@ -1259,18 +933,13 @@
     if (rankListEl) rankListEl.classList.add('hidden');
     start();
   });
-  document.getElementById('btnShared').addEventListener('click', function () {
-    onlineMode = 'shared';
-    pauseBtn.classList.add('hidden2');
-    joinOnline();
-  });
-  document.getElementById('btnPk').addEventListener('click', function () {
-    onlineMode = 'pk';
+  document.getElementById('btnOnline').addEventListener('click', function () {
     pauseBtn.classList.add('hidden2');
     joinOnline();
   });
 
   var KEY_DIRS = {
+    ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
     w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
     W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0]
   };
@@ -1278,7 +947,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === ' ' || e.code === 'Space') {
       e.preventDefault();
-      if ((online.mode !== 'pk' || !online.pk || !online.pk.over) && mode !== 'guest' && mode !== 'menu' && state !== 'over') togglePause();
+      if (mode !== 'guest' && mode !== 'menu' && state !== 'over') togglePause();
       return;
     }
     var key = typeof e.key === 'string' ? e.key.toLowerCase() : e.key;
@@ -1287,6 +956,14 @@
       e.preventDefault();
       controlDirection(d);
     }
+  });
+
+  document.querySelectorAll('.dpad button[data-dir]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var map = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+      var d = map[btn.getAttribute('data-dir')];
+      controlDirection(d);
+    });
   });
 
   var touchStart = null;
@@ -1309,19 +986,19 @@
     if (state !== 'over') togglePause();
   });
   restartBtn.addEventListener('click', function () {
-    if (mode === 'host') { startHostRound(); return; }
-    if (mode === 'guest') return;
+    if (mode === 'host') { restartOnlineSnake(snakeForToken(online.token)); return; }
+    if (mode === 'guest') { sendGuestRestart(); return; }
     start();
   });
   overlayRestart.addEventListener('click', function () {
-    if (mode === 'host') startHostRound();
+    if (mode === 'host') restartOnlineSnake(snakeForToken(online.token));
+    else if (mode === 'guest') sendGuestRestart();
     else start();
   });
 
   exitBtn.addEventListener('click', function () {
     clearTimeout(timer);
-    clearInterval(online.timer);
-    if (online.statusTimer) clearInterval(online.statusTimer);
+    clearTimeout(online.timer);
     if (online.pollTimer) clearInterval(online.pollTimer);
     if ((mode === 'host' || mode === 'guest') && online.code && online.token) {
       postJSON('/api/relay/leave', { code: online.code, token: online.token })
