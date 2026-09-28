@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parent
 PORT = int(os.environ.get("PORT", "8400"))
 CELL = 40
 PLAYER_RADIUS = 10
-BASE_SPEED = 68
-SPEED_STACK_BASE = 128
-SPEED_STACK_STEP = 48
+BASE_SPEED = 204
+SPEED_STACK_BASE = 260
+SPEED_STACK_STEP = 60
 SPEED_MAX_STACKS = 6
 SPEED_SECONDS = 12
 GHOST_SECONDS = 4
@@ -27,7 +27,7 @@ SHIELD_SECONDS = 8
 FREEZE_SECONDS = 3
 REVERSE_SECONDS = 5
 ITEM_RESPAWN_SECONDS = 8
-PICKUP_RADIUS = 26
+PICKUP_RADIUS = 10
 PLAYER_TIMEOUT = 15
 PLAYER_COLORS = ["#3b82f6", "#ef4444", "#facc15", "#22c55e", "#a855f7", "#f97316"]
 PLAYER_EMOJIS = ["🔵", "🔴", "🟡", "🟢", "🟣", "🟠"]
@@ -519,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
                 for c, r in ROOMS.items():
                     if r.get("mode") != "versus" and r["players"]:
                         continue
-                    if r["phase"] == "lobby" and len(r["players"]) < 6:
+                    if r["phase"] in ("lobby", "countdown", "racing") and len(r["players"]) < 2:
                         target = r
                         break
                 if not target:
@@ -539,7 +539,7 @@ class Handler(BaseHTTPRequestHandler):
                 token = "p" + str(slot) + "-" + str(random.randrange(10 ** 12))
                 player["token"] = token
                 room["players"][token] = player
-                if len(room["players"]) == 6 and room["phase"] == "lobby":
+                if len(room["players"]) == 2:
                     start_level(room, 0)
                 return self.send_json({"ok": True, "code": code, "player": token, "slot": slot})
 
@@ -556,14 +556,14 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/join":
                 if room.get("mode") == "solo":
                     return self.send_json({"ok": False, "error": "单人挑战房间不能加入其他玩家"}, 403)
-                if len(room["players"]) >= 6:
-                    return self.send_json({"ok": False, "error": "房间已满"}, 400)
+                if len(room["players"]) >= 2:
+                    return self.send_json({"ok": False, "error": "房间已满（2人对战）"}, 400)
                 name = str(body.get("name", "")).strip()[:12] or "玩家2"
                 player = make_player(1, name)
                 token = "p1-" + random.randrange(10 ** 12).__str__()
                 player["token"] = token
                 room["players"][token] = player
-                if len(room["players"]) == 6 and room["phase"] == "lobby":
+                if len(room["players"]) == 2:
                     start_level(room, 0)
                 return self.send_json({"ok": True, "code": code, "player": token, "slot": 1})
 

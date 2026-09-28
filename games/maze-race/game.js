@@ -321,7 +321,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const view = drawMaze(latest.maze);
       latest.items.forEach(item => {
-        ctx.font = '18px sans-serif';
+        ctx.font = '10px sans-serif';
         const icon = {
           speed: '👟', ghost: '👻', slow: '🐌', coin: '🪙', star: '⭐',
           shield: '🛡️', freeze: '❄️', teleport: '🌀', reverse: '🔁'
