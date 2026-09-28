@@ -26,6 +26,8 @@ window.ChallengeArena = (function () {
       gameName: "闯关游戏",
       onBegin: () => {},
       onRestart: () => {},
+      allowRename: true,
+      randomName: null,
       autoJoin: false,
       getProgress: () => ({ status: "playing", score: 0, level: 1 }),
       getTargetConfig: () => ({}),
@@ -222,7 +224,7 @@ window.ChallengeArena = (function () {
 
       joinBtn.disabled = state.seat >= 0;
       joinBtn.textContent = state.seat >= 0 ? "✅ 已进入联机房" : "🚀 自动进入联机房";
-      renameBox.classList.toggle("hidden", state.seat < 0);
+      renameBox.classList.toggle("hidden", state.seat < 0 || !cfg.allowRename);
 
       if (typeof cfg.renderLobbySettings === "function") {
         const settingsKey = `${isHost ? "host" : "guest"}:${stateData.targetPlayers}:${stateData.started}`;
@@ -308,7 +310,10 @@ window.ChallengeArena = (function () {
           clientId = makeClientId();
           localStorage.setItem(clientKey, clientId);
         }
-        const data = await request("/join", { clientId });
+        const data = await request("/join", {
+          clientId,
+          name: typeof cfg.randomName === "function" ? cfg.randomName() : "",
+        });
         state.token = data.token;
         state.seat = data.seat;
         state.name = data.name;

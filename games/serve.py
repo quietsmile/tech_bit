@@ -476,9 +476,11 @@ class Handler(SimpleHTTPRequestHandler):
                         if seat is None:
                             return self.send_json({"ok": False, "error": "room-full", "message": "房间已满"}, 409)
 
+                        requested_name = str(body.get("name") or "").strip()[:16]
+                        used_names = {client["name"] for client in room["clients"].values()}
+                        name = requested_name if requested_name and requested_name not in used_names else SEAT_NAMES[seat]
                         token = uuid.uuid4().hex
                         client_id = str(body.get("clientId") or uuid.uuid4().hex)
-                        name = SEAT_NAMES[seat]
                         client = {
                             "clientId": client_id,
                             "token": token,

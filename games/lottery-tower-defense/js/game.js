@@ -257,9 +257,17 @@ els.restartBtn.addEventListener('click',()=>{
 els.resultHome.addEventListener('click',()=>location.href='../index.html');
 setInterval(()=>{loop(performance.now());},16);
 
-window.LotteryArena=ChallengeArena.create({
+ window.LotteryArena=ChallengeArena.create({
  gameId:'lottery-td',
  gameName:'抽奖塔防大作战',
+ allowRename:false,
+ randomName(){
+  const heads=['闪电','旋风','彩虹','开心','无敌','勇敢','飞毛腿','神秘','暖暖','超级','小小','威武'];
+  const tails=['小老虎','小飞龙','猎豹','小熊猫','企鹅','小狮子','海豚','小飞侠','星星','小恐龙','奥特曼','小蜜蜂'];
+  const head=heads[Math.floor(Math.random()*heads.length)];
+  const tail=tails[Math.floor(Math.random()*tails.length)];
+  return (head+(head.endsWith('小')&&tail.startsWith('小')?tail.slice(1):tail)).slice(0,14);
+ },
  autoJoin:true,
  renderLobbySettings(container,state,isHost){
   container.innerHTML=`
