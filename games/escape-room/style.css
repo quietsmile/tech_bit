@@ -93,3 +93,13 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
 #confetti i { position: absolute; width: 10px; height: 16px; top: -20px; animation: drop linear forwards; }
 @keyframes drop { to { transform: translateY(110vh) rotate(720deg); } }
+
+/* 关4 提示横幅 */
+#pz4 .tip {
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #ffe9a8;
+}
+#pz4 .tip b { color: #ffd166; font-size: 1.1rem; }
