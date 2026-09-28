@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>俄罗斯方块 · 双人同屏对战</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(circle at 50% 0%, #172c45, #050b12 75%);
+    color: #e2f2ff; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 14px;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .home-link { position: fixed; top: 12px; left: 12px; z-index: 30;
+    padding: 7px 12px; border-radius: 999px; text-decoration: none; font-size: 12px; font-weight: 700;
+    background: rgba(18,30,45,.88); color: #dbeafe; border: 1px solid rgba(125,211,252,.28); }
+  .keys-bar { font-size: 13px; color: #9fb4c9; margin-bottom: 12px; text-align: center; line-height: 1.8; }
+  .keys-bar b.p1 { color: #7bd88f; }
+  .keys-bar b.p2 { color: #7ec8ff; }
+  .duel { display: flex; gap: 26px; align-items: flex-start; }
+  .duel-col { text-align: center; }
+  .phead { font-weight: 900; font-size: 1.05rem; margin-bottom: 8px; }
+  .phead.p1 { color: #7bd88f; }
+  .phead.p2 { color: #7ec8ff; }
+  .pstat { font-size: 0.85rem; color: #9fb4c9; margin-bottom: 6px; }
+  canvas.board { background: #10131b; border: 2px solid #3a4256; border-radius: 8px; display: block; }
+  .vs { align-self: center; font-size: 1.5rem; font-weight: 900; color: #55617a; padding: 0 4px; }
+  #overlay {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(5,8,14,.88); text-align: center;
+  }
+  #overlay.hidden { display: none; }
+  #ovTitle { font-size: 2rem; font-weight: 900; }
+  #ovTitle.p1win { color: #7bd88f; }
+  #ovTitle.p2win { color: #7ec8ff; }
+  #ovText { color: #9fb4c9; }
+  #ovBtn { padding: 12px 30px; font-size: 1rem; background: linear-gradient(120deg,#38bdf8,#4ade80); color: #04121d; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; transition:.15s; }
+  #ovBtn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+</style>
+</head>
+<body>
+  <a class="home-link" href="../index.html">🏠 游戏中心</a>
+  <h1>🧱 俄罗斯方块 · 双人对战</h1>
+  <div class="keys-bar">
+    <b class="p1">1P 绿</b>：A/D 移动 · W 旋转 · S 软降 · Space 硬降　　　<b class="p2">2P 蓝</b>：←/→ 移动 · ↑ 旋转 · ↓ 软降 · Enter 硬降<br>
+    消 2 行以上给对方加干扰行！按 <b>R</b> 重新开始
+  </div>
+  <div class="duel">
+    <div class="duel-col">
+      <div class="phead p1">1P</div>
+      <canvas id="board1" width="240" height="480"></canvas>
+      <div class="pstat">分数 <b id="score1">0</b> · 行 <b id="lines1">0</b> · 等级 <b id="level1">1</b></div>
+    </div>
+    <div class="duel-col">
+      <div class="phead p2">2P</div>
+      <canvas id="board2" width="240" height="480"></canvas>
+      <div class="pstat">分数 <b id="score2">0</b> · 行 <b id="lines2">0</b> · 等级 <b id="level2">1</b></div>
+    </div>
+  </div>
+  <div id="overlay">
+    <div id="ovTitle"></div>
+    <div id="ovText"></div>
+    <button id="ovBtn">开始对局</button>
+  </div>
+  <script src="battle.js"></script>
+</body>
+</html>
