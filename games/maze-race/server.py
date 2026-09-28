@@ -23,19 +23,24 @@ SPEED_MAX_STACKS = 6
 SPEED_SECONDS = 12
 GHOST_SECONDS = 4
 SLOW_SECONDS = 6
+SHIELD_SECONDS = 8
+FREEZE_SECONDS = 3
+REVERSE_SECONDS = 5
+ITEM_RESPAWN_SECONDS = 8
 PICKUP_RADIUS = 26
 PLAYER_TIMEOUT = 15
 PLAYER_COLORS = ["#3b82f6", "#ef4444", "#facc15", "#22c55e", "#a855f7", "#f97316"]
 PLAYER_EMOJIS = ["🔵", "🔴", "🟡", "🟢", "🟣", "🟠"]
 
 LEVELS = [
-    {"cols": 13, "rows": 9, "items": 9},
-    {"cols": 17, "rows": 11, "items": 12},
-    {"cols": 21, "rows": 13, "items": 15},
+    {"cols": 13, "rows": 9, "items": 14},
+    {"cols": 17, "rows": 11, "items": 18},
+    {"cols": 21, "rows": 13, "items": 22},
 ]
 
 ROOMS = {}
 LOCK = threading.RLock()
+_ITEM_SEQ = 0
 
 
 def generate_maze(cols, rows):
@@ -110,6 +115,9 @@ def make_player(slot, name):
         "speed_until": 0,
         "ghost_until": 0,
         "slowed_until": 0,
+        "shield_until": 0,
+        "frozen_until": 0,
+        "reverse_until": 0,
         "finished": False,
         "finish_time": 0,
         "input": [False, False, False, False],
@@ -128,8 +136,14 @@ def prune_players(room, at=None):
 
 
 def make_item(x, y):
-    kind = random.choices(["speed", "ghost", "slow", "coin"], weights=[35, 18, 17, 30], k=1)[0]
-    return {"id": f"{x}_{y}_{kind}", "x": x, "y": y, "kind": kind}
+    global _ITEM_SEQ
+    _ITEM_SEQ += 1
+    kind = random.choices(
+        ["speed", "ghost", "slow", "coin", "star", "shield", "freeze", "teleport", "reverse"],
+        weights=[18, 11, 8, 16, 11, 10, 8, 9, 9],
+        k=1,
+    )[0]
+    return {"id": f"item_{_ITEM_SEQ}", "x": x, "y": y, "kind": kind}
 
 
 def start_level(room, level):
@@ -155,6 +169,9 @@ def start_level(room, level):
             "speed_until": 0,
             "ghost_until": 0,
             "slowed_until": 0,
+            "shield_until": 0,
+            "frozen_until": 0,
+            "reverse_until": 0,
             "input": [False, False, False, False],
             "collected_items": set(),
         })
@@ -162,6 +179,7 @@ def start_level(room, level):
     room["start_at"] = time.time() + 3.2
     room["level_started"] = 0
     room["level_elapsed"] = 0
+    room["item_respawn_at"] = time.time() + ITEM_RESPAWN_SECONDS
     room["updated"] = time.time()
 
 
@@ -183,8 +201,16 @@ def tick_room(room):
         if player["speed_until"] and now >= player["speed_until"]:
             player["speed_until"] = 0
             player["speed_stacks"] = 0
+        if player["shield_until"] and now >= player["shield_until"]:
+            player["shield_until"] = 0
+        if player["frozen_until"] and now >= player["frozen_until"]:
+            player["frozen_until"] = 0
+        if player["reverse_until"] and now >= player["reverse_until"]:
+            player["reverse_until"] = 0
 
         inp = player["input"]
+        if now < player["reverse_until"]:
+            inp = [inp[2], inp[3], inp[0], inp[1]]
         dx = (1 if inp[1] else 0) - (1 if inp[3] else 0)
         dy = (1 if inp[2] else 0) - (1 if inp[0] else 0)
         length = math.hypot(dx, dy)
@@ -200,6 +226,8 @@ def tick_room(room):
             speed *= 0.55
 
         ghost = now < player["ghost_until"]
+        if now < player["frozen_until"]:
+            continue
         nx = player["px"] + dx * speed * 0.016
         ny = player["py"] + dy * speed * 0.016
         if can_stay(room["maze"], nx, player["py"], ghost):
@@ -207,14 +235,15 @@ def tick_room(room):
         if can_stay(room["maze"], player["px"], ny, ghost):
             player["py"] = ny
 
-        for item in room["items"][:]:
-            if item["id"] in player["collected_items"]:
-                continue
+        for item_index, item in enumerate(room["items"][:]):
             if math.hypot(player["px"] - item["x"] * CELL - CELL / 2,
                           player["py"] - item["y"] * CELL - CELL / 2) <= PICKUP_RADIUS:
+                room["items"].pop(item_index)
                 player["collected_items"].add(item["id"])
                 if item["kind"] == "coin":
                     player["score"] += 10
+                elif item["kind"] == "star":
+                    player["score"] += 30
                 elif item["kind"] == "speed":
                     if now < player["speed_until"]:
                         player["speed_stacks"] = min(SPEED_MAX_STACKS, player["speed_stacks"] + 1)
@@ -225,7 +254,50 @@ def tick_room(room):
                 elif item["kind"] == "ghost":
                     player["ghost_until"] = max(now, player["ghost_until"]) + GHOST_SECONDS
                 elif item["kind"] == "slow":
-                    player["slowed_until"] = max(now, player["slowed_until"]) + SLOW_SECONDS
+                    if now < player["shield_until"]:
+                        player["shield_until"] = 0
+                        player["slowed_until"] = 0
+                    else:
+                        player["slowed_until"] = max(now, player["slowed_until"]) + SLOW_SECONDS
+                elif item["kind"] == "shield":
+                    player["shield_until"] = max(now, player["shield_until"]) + SHIELD_SECONDS
+                    player["slowed_until"] = 0
+                    player["frozen_until"] = 0
+                    player["reverse_until"] = 0
+                elif item["kind"] == "freeze":
+                    for other in room["players"].values():
+                        if other is player or now < other["shield_until"]:
+                            continue
+                        other["frozen_until"] = max(now, other["frozen_until"]) + FREEZE_SECONDS
+                elif item["kind"] == "teleport":
+                    maze = room["maze"]
+                    for _attempt in range(80):
+                        tx = random.randrange(maze["cols"])
+                        ty = random.randrange(maze["rows"])
+                        px = tx * CELL + CELL / 2
+                        py = ty * CELL + CELL / 2
+                        if can_stay(maze, px, py) and not (tx == 0 and ty == 0) and not (
+                                tx == maze["cols"] - 1 and ty == maze["rows"] - 1):
+                            player["px"] = px
+                            player["py"] = py
+                            break
+                elif item["kind"] == "reverse":
+                    for other in room["players"].values():
+                        if other is player or now < other["shield_until"]:
+                            continue
+                        other["reverse_until"] = max(now, other["reverse_until"]) + REVERSE_SECONDS
+
+    if now >= room.get("item_respawn_at", 0):
+        room["item_respawn_at"] = now + ITEM_RESPAWN_SECONDS
+        cfg = LEVELS[room["level"]]
+        if len(room["items"]) < cfg["items"]:
+            used = {(item["x"], item["y"]) for item in room["items"]}
+            used.update({(0, 0), (cfg["cols"] - 1, cfg["rows"] - 1)})
+            for _attempt in range(50):
+                x, y = random.randrange(cfg["cols"]), random.randrange(cfg["rows"])
+                if (x, y) not in used:
+                    room["items"].append(make_item(x, y))
+                    break
 
         cx = int(player["px"] // CELL)
         cy = int(player["py"] // CELL)
@@ -251,6 +323,9 @@ def public_player(player, now):
         "speed_until": round(max(0, player["speed_until"] - now), 2),
         "ghost_until": round(max(0, player["ghost_until"] - now), 2),
         "slowed_until": round(max(0, player["slowed_until"] - now), 2),
+        "shield_until": round(max(0, player["shield_until"] - now), 2),
+        "frozen_until": round(max(0, player["frozen_until"] - now), 2),
+        "reverse_until": round(max(0, player["reverse_until"] - now), 2),
         "finished": player["finished"],
         "finish_time": round(player["finish_time"], 3),
     }

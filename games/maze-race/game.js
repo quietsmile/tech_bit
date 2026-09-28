@@ -173,7 +173,7 @@
       overlay.classList.remove('hidden');
     } else if (state.phase === 'countdown') {
       overlayTitle.textContent = Math.ceil(state.countdown) || '出发！';
-      overlayDesc.textContent = '连续按住方向键移动，吃到 👟 会加速。';
+      overlayDesc.textContent = '连续按住方向键移动，收集 🎁 道具获得优势。';
       overlayBtn.classList.add('hidden');
       overlay.classList.remove('hidden');
     } else if (state.phase === 'racing') {
@@ -212,6 +212,9 @@
       if (me.speed_until) extras.push(`👟加速 ${me.speed_until.toFixed(1)}s`);
       if (me.ghost_until) extras.push(`👻穿墙 ${me.ghost_until.toFixed(1)}s`);
       if (me.slowed_until) extras.push(`🐌减速 ${me.slowed_until.toFixed(1)}s`);
+      if (me.shield_until) extras.push(`🛡️护盾 ${me.shield_until.toFixed(1)}s`);
+      if (me.frozen_until) extras.push(`❄️冻结 ${me.frozen_until.toFixed(1)}s`);
+      if (me.reverse_until) extras.push(`🔁反向 ${me.reverse_until.toFixed(1)}s`);
       statusEl.textContent = `${me.emoji} ${me.name} · ${me.score}分` + (extras.length ? ' · ' + extras.join(' · ') : '');
     }
   }
@@ -302,7 +305,10 @@
       const view = drawMaze(latest.maze);
       latest.items.forEach(item => {
         ctx.font = '18px sans-serif';
-        const icon = { speed: '👟', ghost: '👻', slow: '🐌', coin: '🪙' }[item.kind];
+        const icon = {
+          speed: '👟', ghost: '👻', slow: '🐌', coin: '🪙', star: '⭐',
+          shield: '🛡️', freeze: '❄️', teleport: '🌀', reverse: '🔁'
+        }[item.kind] || '🎁';
         ctx.fillText(icon, view.ox + item.x * view.cell + view.cell / 2, view.oy + item.y * view.cell + view.cell / 2 + 6);
       });
 
