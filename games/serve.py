@@ -48,6 +48,7 @@ def relay_prune():
 
 
 RELAY_GAME_CODES = {"snake": "SNAKE", "td-match": "TDMATCH"}
+RELAY_MAX_PLAYERS = 6
 
 
 def relay_touch_guest(room, token, now):
@@ -58,14 +59,25 @@ def relay_active_guests(room, now):
     return [t for t in room["guests"] if now - room.get("guest_seen", {}).get(t, 0) < 60]
 
 
-def relay_auto(game, token):
+def relay_cleanup_guests(room, at):
+    active = set(relay_active_guests(room, at))
+    removed = [token for token in room["guests"] if token not in active]
+    for token in removed:
+        room["guests"].remove(token)
+        room.get("guest_seen", {}).pop(token, None)
+        room.get("guest_ids", {}).pop(token, None)
+
+
+def relay_auto(game, token, player_id="玩家"):
     """打开页面自动进入该游戏的唯一房间；第一个玩家成为房主。"""
     code = RELAY_GAME_CODES.get(game, game.upper()[:8])
+    player_id = (player_id or "玩家")[:12]
     now = time.time()
     room = RELAY_ROOMS.get(code)
     if not room:
         room = {
-            "game": game, "host_token": "", "host_seen": 0, "guests": [], "guest_seen": {},
+            "game": game, "host_token": "", "host_seen": 0, "host_id": "",
+            "guests": [], "guest_seen": {}, "guest_ids": {},
             "scores": {}, "state": None, "version": 0, "inputs": [],
             "last_seen": now,
         }
@@ -75,17 +87,23 @@ def relay_auto(game, token):
     # 重连：token 已是房主
     if token and room["host_token"] == token:
         room["host_seen"] = now
-        return {"ok": True, "code": code, "token": token, "role": "host", "seat": 0}
+        room["host_id"] = player_id or room.get("host_id") or "玩家1"
+        return {"ok": True, "code": code, "token": token, "role": "host", "seat": 0,
+                "player_id": room["host_id"], "max_players": RELAY_MAX_PLAYERS}
     # 重连：token 已是客人
     if token and token in room["guests"]:
         relay_touch_guest(room, token, now)
+        room.setdefault("guest_ids", {})[token] = player_id or room.get("guest_ids", {}).get(token) or "玩家"
         return {"ok": True, "code": code, "token": token,
-                "role": "guest", "seat": room["guests"].index(token) + 1}
+                "role": "guest", "seat": room["guests"].index(token) + 1,
+                "player_id": room["guest_ids"][token], "max_players": RELAY_MAX_PLAYERS}
 
     # 房主离线超过 90 秒则释放房主位
     if room["host_token"] and now - room.get("host_seen", 0) > 30:
         room["guests"] = []
         room["guest_seen"] = {}
+        room["guest_ids"] = {}
+        room["host_id"] = ""
         room["state"] = None
         room["version"] += 1
         room["host_token"] = ""
@@ -95,19 +113,24 @@ def relay_auto(game, token):
     if not room["host_token"]:
         room["host_token"] = relay_new_token()
         room["host_seen"] = now
+        room["host_id"] = player_id or "玩家1"
         return {"ok": True, "code": code, "token": room["host_token"],
-                "role": "host", "seat": 0, "new_host_token": room["host_token"]}
+                "role": "host", "seat": 0, "new_host_token": room["host_token"],
+                "player_id": room["host_id"], "max_players": RELAY_MAX_PLAYERS}
 
     # 房间满员检查（活跃客人 < 5）
-    if len(relay_active_guests(room, now)) >= 5:
+    relay_cleanup_guests(room, now)
+    if len(relay_active_guests(room, now)) >= RELAY_MAX_PLAYERS - 1:
         return {"ok": False, "error": "房间已满（最多 6 人）"}
 
     guest_token = relay_new_token()
     room["guests"].append(guest_token)
+    room.setdefault("guest_ids", {})[guest_token] = player_id or ("玩家" + str(len(room["guests"]) + 1))
     relay_touch_guest(room, guest_token, now)
     room["last_seen"] = now
     return {"ok": True, "code": code, "token": guest_token,
-            "role": "guest", "seat": len(room["guests"])}
+            "role": "guest", "seat": len(room["guests"]),
+            "player_id": room["guest_ids"][guest_token], "max_players": RELAY_MAX_PLAYERS}
 
 
 def relay_guest_count(room, now):
@@ -397,12 +420,35 @@ class Handler(SimpleHTTPRequestHandler):
                 relay_prune()
                 if action == "auto":
                     # 每个游戏一个固定房间：打开页面自动进入（第一个玩家是房主）
-                    result = relay_auto(str(body.get("game", "snake"))[:20], token)
+                    result = relay_auto(
+                        str(body.get("game", "snake"))[:20],
+                        token,
+                        str(body.get("player_id", "玩家"))[:12],
+                    )
                     self.send_json(result)
                     return
                 room = RELAY_ROOMS.get(code)
                 if not room:
                     self.send_json({"ok": False, "error": "invalid-room"}, 404)
+                    return
+                if action == "leave":
+                    if token == room.get("host_token"):
+                        room["host_token"] = ""
+                        room["host_seen"] = 0
+                        room["guests"] = []
+                        room["guest_seen"] = {}
+                        room["guest_ids"] = {}
+                        room["state"] = None
+                        room["inputs"] = []
+                        room["version"] += 1
+                    elif token in room.get("guests", []):
+                        room["guests"].remove(token)
+                        room.get("guest_seen", {}).pop(token, None)
+                        room.get("guest_ids", {}).pop(token, None)
+                        room["inputs"] = [item for item in room["inputs"] if item.get("token") != token]
+                        room["version"] += 1
+                    room["last_seen"] = time.time()
+                    self.send_json({"ok": True})
                     return
                 if action == "input":
                     if not token:
@@ -792,7 +838,11 @@ class Handler(SimpleHTTPRequestHandler):
                     room["host_seen"] = now
                 elif token and token in room["guests"]:
                     relay_touch_guest(room, token, now)
+                elif token:
+                    self.send_json({"ok": False, "error": "player-left"}, 403)
+                    return
                 self.send_json({"ok": True, "version": room["version"], "state": room["state"]})
+                return
         if parsed.path == "/api/relay/inputs":
             query = parse_qs(parsed.query)
             code = query.get("code", [""])[0]
@@ -807,7 +857,11 @@ class Handler(SimpleHTTPRequestHandler):
                 inputs = room["inputs"]
                 room["inputs"] = []
                 guest_tokens = list(room["guests"])
-            self.send_json({"ok": True, "inputs": inputs, "guests": guest_tokens})
+                player_ids = [room.get("host_id", "玩家1")] + [
+                    room.get("guest_ids", {}).get(token, "玩家" + str(index + 2))
+                    for index, token in enumerate(guest_tokens)
+                ]
+            self.send_json({"ok": True, "inputs": inputs, "guests": guest_tokens, "player_ids": player_ids})
 
         path = parsed.path
         if path in ("/", "/index.html"):
