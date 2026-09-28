@@ -285,13 +285,16 @@
     var territory = { 1: 0, 2: 0 };
     var liberties = { 1: 0, 2: 0 };
     var visited = {};
+    /* 空棋盘/布局阶段不能把整片开放区域都当成某一方的“围空”。
+     * 只有被同色棋子包住的小片空点才算粗略围空；大开放区域保持中性。 */
+    var maxTerritoryRegion = Math.max(6, Math.ceil(N * N * .15));
     for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) stones[board[r][c]]++;
     for (r = 0; r < N; r++) for (c = 0; c < N; c++) {
       if (board[r][c]) {
         var own = groupInfo(board, r, c);
         liberties[board[r][c]] += Math.min(own.libs, 4);
       } else if (!visited[r + ',' + c]) {
-        var region = [], stack = [[r, c]], touch = {};
+        var region = [], stack = [[r, c]], touch = {}, touchCount = { 1: {}, 2: {} };
         visited[r + ',' + c] = 1;
         while (stack.length) {
           var cur = stack.pop();
@@ -304,10 +307,11 @@
                 stack.push([n[0], n[1]]);
               }
             } else touch[v] = 1;
+            if (v) touchCount[v][n[0] + ',' + n[1]] = 1;
           });
         }
-        if (touch[1] && !touch[2]) territory[1] += region.length;
-        else if (touch[2] && !touch[1]) territory[2] += region.length;
+        if (touch[1] && !touch[2] && region.length <= maxTerritoryRegion && Object.keys(touchCount[1]).length >= 2) territory[1] += region.length;
+        else if (touch[2] && !touch[1] && region.length <= maxTerritoryRegion && Object.keys(touchCount[2]).length >= 2) territory[2] += region.length;
       }
     }
     var raw = stones[1] - stones[2] + territory[1] - territory[2] +
