@@ -101,7 +101,7 @@ function placeItem(p,index,x,y){
 function spin(p){
  return spinCount(p,1);
 }
-function spinTen(p){return spinCount(p,10);}
+function spinThree(p){return spinCount(p,CONFIG.multiPullCount);}
 function spinCount(p,count){
  count=Math.max(1,Math.min(10,Math.floor(count)||1));
  const cost=CONFIG.spinCost*count;
@@ -208,10 +208,10 @@ function updateHUD(){
  els.coins.textContent=Math.round(p.coins);els.level.textContent=p.level;
  els.unitCount.textContent=battle?battle.unitsOf(p).length:0;els.kills.textContent=p.kills;els.damage.textContent=Math.round(p.damage);
  els.spinBtn.disabled=!!(wheelBusy||!running||paused||p.coins<CONFIG.spinCost);
- els.tenBtn.disabled=!!(wheelBusy||!running||paused||p.coins<CONFIG.spinCost*10);
+ els.tenBtn.disabled=!!(wheelBusy||!running||paused||p.coins<CONFIG.spinCost*CONFIG.multiPullCount);
  els.upgradeBtn.disabled=!!(wheelBusy||!running||paused||p.level>=CONFIG.maxLevel||p.coins<CONFIG.levelUpCost(p.level));
  els.spinBtn.textContent=wheelBusy?'🎰 转盘旋转中…':`🎰 抽奖（${CONFIG.spinCost}金）`;
- els.tenBtn.textContent=wheelBusy?'🌟 10连抽旋转中…':`🌟 10连抽（${CONFIG.spinCost*10}金）`;
+ els.tenBtn.textContent=wheelBusy?'🌟 3连抽旋转中…':`🌟 3连抽（${CONFIG.spinCost*CONFIG.multiPullCount}金）`;
  els.upgradeBtn.textContent=p.level>=CONFIG.maxLevel?'⬆️ 奖池已满级':`⬆️ 升级奖池（${CONFIG.levelUpCost(p.level)}金）`;
  const remote=new Map();
  if(networkMode&&networkArena&&typeof networkArena.players==='function'){
@@ -269,7 +269,7 @@ function endGame(){
  finalize();
 }
 buildSetup();
- els.tenBtn.addEventListener('click',()=>spinTen(controlled()));
+ els.tenBtn.addEventListener('click',()=>spinThree(controlled()));
  els.tenClose.addEventListener('click',()=>els.tenResult.classList.add('hidden'));
 els.inventory.addEventListener('click',event=>{
  const place=event.target.closest('button[data-place]');

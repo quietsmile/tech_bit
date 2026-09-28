@@ -3,6 +3,7 @@
  * ============================================================ */
 const CONFIG = {
   spinCost: 20,          // 单次抽奖消耗
+  multiPullCount: 3,     // 多连抽数量
   startCoins: 120,       // 开局金币
   maxLevel: 10,          // 抽奖等级上限
   waveInterval: 8,       // 每波野怪间隔（秒）
