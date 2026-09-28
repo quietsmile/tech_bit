@@ -113,7 +113,7 @@
 
   function finishGame(winner) {
     statusEl.textContent = "游戏结束";
-    evaluationOverride = winner === 1 ? 10000 : winner === 2 ? -10000 : 0;
+    evaluationOverride = winner === 0 ? 0 : 10000;
     updateEvaluation();
     if (mode === "pve") {
       if (winner === 1) {
@@ -196,11 +196,12 @@
   }
 
   function updateEvaluation() {
-    var score = evaluationOverride === null
+    var blackScore = evaluationOverride === null
       ? Math.round(Math.tanh(evaluateBoard() / 2200) * 9800)
       : evaluationOverride;
+    var score = currentPlayer === 1 ? blackScore : -blackScore;
     document.getElementById("evalInfo").textContent =
-      "系统评估（黑棋）：" + formatEvaluation(score) + " / ±10000";
+      "系统评估（" + (currentPlayer === 1 ? "黑棋" : "白棋") + "）：" + formatEvaluation(score) + " / ±10000";
   }
 
   function evaluateBoard() {

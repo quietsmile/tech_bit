@@ -58,10 +58,11 @@ function formatEvaluation(score) {
 
 function updateEvaluation() {
   const el = document.getElementById('evalInfo');
-  const score = evaluationOverride === null
+  const redScore = evaluationOverride === null
     ? Math.round(Math.tanh(aiEvaluate(board) / 2400) * 9800)
     : evaluationOverride;
-  el.textContent = `系统评估（红方）：${formatEvaluation(score)} / ±10000`;
+  const score = turn === 'red' ? redScore : -redScore;
+  el.textContent = `系统评估（${turn === 'red' ? '红方' : '黑方'}）：${formatEvaluation(score)} / ±10000`;
 }
 
 function scheduleAiMove() {
@@ -135,13 +136,13 @@ function checkEnd() {
   if (!hasAnyLegalMove(board, next)) {
     const winner = next === 'red' ? '黑方' : '红方';
     gameOver = true;
-    evaluationOverride = winner === 'red' ? 10000 : -10000;
+    evaluationOverride = -10000;
     updateStatus(`将死！${winner}获胜 🎉`);
     updateEvaluation();
     showResult(winner);
   } else if (!findGeneral(board, next)) {
     gameOver = true;
-    evaluationOverride = next === 'red' ? -10000 : 10000;
+    evaluationOverride = -10000;
     updateStatus(`${next === 'red' ? '红方' : '黑方'}将被吃，对方获胜`);
     updateEvaluation();
     showResult(next === 'red' ? '黑方' : '红方');

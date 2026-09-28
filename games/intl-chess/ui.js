@@ -63,10 +63,11 @@ function formatEvaluation(score) {
 
 function updateEvaluation() {
   const el = document.getElementById('evalInfo');
-  const score = evaluationOverride === null
+  const whiteScore = evaluationOverride === null
     ? Math.round(Math.tanh(aiEvaluate(pos) / 2400) * 9800)
     : evaluationOverride;
-  el.textContent = `系统评估（白方）：${formatEvaluation(score)} / ±10000`;
+  const score = turn === 'w' ? whiteScore : -whiteScore;
+  el.textContent = `系统评估（${turn === 'w' ? '白方' : '黑方'}）：${formatEvaluation(score)} / ±10000`;
 }
 
 function scheduleAiMove() {
@@ -103,7 +104,7 @@ function checkEnd() {
   gameOver = true;
   if (isInCheck(pos, turn)) {
     const winner = turn === 'w' ? '黑方' : '白方';
-    evaluationOverride = winner === '白方' ? 10000 : -10000;
+    evaluationOverride = -10000;
     updateStatus(`将杀！${winner}获胜 🎉`);
     updateEvaluation();
     showResult(winner);

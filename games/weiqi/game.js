@@ -249,7 +249,7 @@
     var blackScore = stones[1] + terr[1];
     var whiteScore = stones[2] + terr[2] + KOMI;
     var winner = blackScore > whiteScore ? '黑棋胜' : '白棋胜';
-    evaluationOverride = blackScore > whiteScore ? 10000 : -10000;
+    evaluationOverride = (current === 1) === (blackScore > whiteScore) ? 10000 : -10000;
     var diff = Math.abs(blackScore - whiteScore).toFixed(1);
     resultEl.classList.remove('hidden');
     resultEl.innerHTML = '<h2>🏁 终局</h2>' +
@@ -273,10 +273,11 @@
   }
 
   function updateEvaluation() {
-    var score = evaluationOverride === null
+    var blackScore = evaluationOverride === null
       ? Math.round(Math.tanh(estimateScore() / (N * N / 3)) * 9800)
       : evaluationOverride;
-    scoreEl.textContent = '系统评估（黑棋）：' + formatEvaluation(score) + ' / ±10000';
+    var score = current === 1 ? blackScore : -blackScore;
+    scoreEl.textContent = '系统评估（' + (current === 1 ? '黑棋' : '白棋') + '）：' + formatEvaluation(score) + ' / ±10000';
   }
 
   function estimateScore() {
