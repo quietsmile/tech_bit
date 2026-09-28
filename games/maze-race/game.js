@@ -2,6 +2,63 @@
 (function () {
   'use strict';
 
+  if (typeof module !== 'undefined' && module.exports && typeof window === 'undefined') {
+    const LEVELS = [
+      { cols: 13, rows: 9, items: 9 },
+      { cols: 17, rows: 11, items: 12 },
+      { cols: 21, rows: 13, items: 15 }
+    ];
+    function generateMaze(cols, rows) {
+      const cells = Array.from({ length: cols * rows }, (_, i) => ({
+        x: i % cols,
+        y: Math.floor(i / cols),
+        walls: [true, true, true, true],
+        visited: false
+      }));
+      const at = (x, y) => (x >= 0 && y >= 0 && x < cols && y < rows ? cells[y * cols + x] : null);
+      const stack = [at(0, 0)];
+      stack[0].visited = true;
+      const dirs = [[0, -1, 0, 2], [1, 0, 1, 3], [0, 1, 2, 0], [-1, 0, 3, 1]];
+      while (stack.length) {
+        const cur = stack[stack.length - 1];
+        const next = dirs.map((dir, index) => [at(cur.x + dir[0], cur.y + dir[1]), index])
+          .filter(([cell]) => cell && !cell.visited);
+        if (!next.length) {
+          stack.pop();
+          continue;
+        }
+        const [cell, index] = next[Math.floor(Math.random() * next.length)];
+        cur.walls[dirs[index][2]] = false;
+        cell.walls[dirs[index][3]] = false;
+        cell.visited = true;
+        stack.push(cell);
+      }
+      return { cols, rows, cells };
+    }
+    function isReachable(maze, sx, sy, gx, gy) {
+      const seen = new Set([sx + ',' + sy]);
+      const queue = [[sx, sy]];
+      const dirs = [[0, -1, 0], [1, 0, 1], [0, 1, 2], [-1, 0, 3]];
+      while (queue.length) {
+        const [x, y] = queue.shift();
+        if (x === gx && y === gy) return true;
+        const cell = maze.cells[y * maze.cols + x];
+        for (const [dx, dy, wall] of dirs) {
+          if (cell.walls[wall]) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          const key = nx + ',' + ny;
+          if (nx < 0 || ny < 0 || nx >= maze.cols || ny >= maze.rows || seen.has(key)) continue;
+          seen.add(key);
+          queue.push([nx, ny]);
+        }
+      }
+      return false;
+    }
+    module.exports = { generateMaze, isReachable, LEVELS };
+    return;
+  }
+
   const API_BASE = location.port === '8400' ? '' : `${location.protocol}//${location.hostname}:8400`;
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
@@ -59,7 +116,7 @@
   function showGame() {
     connectCard.classList.add('hidden');
     gameCard.classList.remove('hidden');
-    roomCodeEl.textContent = room;
+    roomCodeEl.textContent = '公共大厅';
   }
 
   async function startSolo() {
@@ -78,6 +135,8 @@
 
   async function autoJoin() {
     const name = nameInput.value.trim() || ('小选手' + Math.floor(Math.random() * 90 + 10));
+    joinBtn.disabled = true;
+    connectMsg.textContent = '正在进入公共大厅…';
     try {
       const result = await api('/api/auto', { name });
       if (!result.ok) throw new Error(result.error);
@@ -88,6 +147,8 @@
       poll();
     } catch (error) {
       connectMsg.textContent = error.message || '进入失败，请稍后再试';
+    } finally {
+      joinBtn.disabled = false;
     }
   }
 
@@ -106,7 +167,7 @@
     const waiting = state.phase === 'lobby' || (state.mode !== 'solo' && state.players.length < 2);
     if (waiting) {
       overlayTitle.textContent = state.mode === 'solo' ? '单人挑战已就绪' : '等待玩家加入（2–6 人）';
-      overlayDesc.textContent = state.mode === 'solo' ? '按方向键连续移动，先到 🏁 就完成。' : '把房间码发给小伙伴，人齐后点「开始比赛」。';
+      overlayDesc.textContent = state.mode === 'solo' ? '按方向键连续移动，先到 🏁 就完成。' : '公共大厅正在等候玩家，准备好后点击开始比赛。';
       overlayBtn.textContent = '▶ 开始比赛';
       overlayBtn.classList.remove('hidden');
       overlay.classList.remove('hidden');
@@ -185,7 +246,7 @@
 
   async function sendInput() {
     if (!room || !token) return;
-    try { await api(`${API_BASE}/api/input`, { code: room, player: token, input }); } catch (_) {}
+    try { await api('/api/input', { code: room, player: token, input }); } catch (_) {}
   }
 
   function fitCanvas() {
@@ -201,6 +262,12 @@
     const cell = 40;
     const ox = (canvas.width - maze.cols * cell) / 2;
     const oy = (canvas.height - maze.rows * cell) / 2;
+    maze.cells.forEach(cellData => {
+      const x = ox + cellData.x * cell;
+      const y = oy + cellData.y * cell;
+      ctx.fillStyle = (cellData.x + cellData.y) % 2 ? '#0d2033' : '#102941';
+      ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+    });
     ctx.strokeStyle = '#5b6b8f';
     ctx.lineWidth = 2;
     ctx.lineCap = 'square';
@@ -216,6 +283,10 @@
     });
     const gx = ox + (maze.cols - 1) * cell;
     const gy = oy + (maze.rows - 1) * cell;
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(ox + cell / 2, oy + cell / 2, 9, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#22c55e';
     ctx.fillRect(gx + 8, gy + 8, cell - 16, cell - 16);
     ctx.fillStyle = '#052e16';
@@ -254,7 +325,10 @@
   }
 
   joinBtn.addEventListener('click', autoJoin);
- soloBtn.addEventListener('click', startSolo);
+  soloBtn.addEventListener('click', startSolo);
+  nameInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') autoJoin();
+  });
   addEventListener('keydown', event => {
     if (keyMap[event.code] === undefined) return;
     event.preventDefault();
@@ -265,6 +339,21 @@
     input[keyMap[event.code]] = false;
   });
   addEventListener('blur', () => { input.fill(false); });
+  const touchMoves = {
+    up: [true, false, false, false],
+    right: [false, true, false, false],
+    down: [false, false, true, false],
+    left: [false, false, false, true]
+  };
+  document.querySelectorAll('[data-move]').forEach(button => {
+    const move = () => {
+      input.splice(0, input.length, ...touchMoves[button.dataset.move]);
+      sendInput();
+      clearTimeout(button._releaseTimer);
+      button._releaseTimer = setTimeout(() => { input.fill(false); sendInput(); }, 120);
+    };
+    button.addEventListener('pointerdown', event => { event.preventDefault(); move(); });
+  });
 
   if (room) {
     token ? showGame() : showConnect('');
@@ -272,5 +361,14 @@
   }
   setInterval(poll, 50);
   setInterval(sendInput, 50);
+  addEventListener('beforeunload', () => {
+    if (!room || !token) return;
+    fetch(API_BASE + '/api/leave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: room, player: token }),
+      keepalive: true,
+    }).catch(() => {});
+  });
   requestAnimationFrame(render);
 })();

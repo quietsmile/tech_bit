@@ -24,6 +24,9 @@ SPEED_SECONDS = 12
 GHOST_SECONDS = 4
 SLOW_SECONDS = 6
 PICKUP_RADIUS = 26
+PLAYER_TIMEOUT = 15
+PLAYER_COLORS = ["#3b82f6", "#ef4444", "#facc15", "#22c55e", "#a855f7", "#f97316"]
+PLAYER_EMOJIS = ["🔵", "🔴", "🟡", "🟢", "🟣", "🟠"]
 
 LEVELS = [
     {"cols": 13, "rows": 9, "items": 9},
@@ -93,12 +96,12 @@ def can_stay(maze, px, py, ghost=False):
 
 
 def make_player(slot, name):
-    emoji = ["🔵", "🔴"][slot]
+    emoji = PLAYER_EMOJIS[slot % len(PLAYER_EMOJIS)]
     return {
         "slot": slot,
         "name": (name or f"玩家{slot + 1}").strip()[:12],
         "emoji": emoji,
-        "color": "#3b82f6" if slot == 0 else "#ef4444",
+        "color": PLAYER_COLORS[slot % len(PLAYER_COLORS)],
         "px": CELL / 2,
         "py": CELL / 2,
         "score": 0,
@@ -111,7 +114,17 @@ def make_player(slot, name):
         "finish_time": 0,
         "input": [False, False, False, False],
         "collected_items": set(),
+        "last_seen": time.time(),
     }
+
+
+def prune_players(room, at=None):
+    at = at or time.time()
+    stale = [token for token, player in room["players"].items()
+             if at - player.get("last_seen", at) > PLAYER_TIMEOUT]
+    for token in stale:
+        room["players"].pop(token, None)
+    return stale
 
 
 def make_item(x, y):
@@ -330,6 +343,11 @@ class Handler(BaseHTTPRequestHandler):
                 room = ROOMS.get(code)
                 if not room:
                     return self.send_json({"ok": False, "error": "房间不存在"}, 404)
+                prune_players(room)
+                if token and token not in room["players"]:
+                    return self.send_json({"ok": False, "error": "玩家已离开大厅"}, 404)
+                if token:
+                    room["players"][token]["last_seen"] = time.time()
                 return self.send_json(state(room, token))
         if parsed.path == "/api/ping":
             return self.send_json({"ok": True})
@@ -404,6 +422,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/auto":
                 # 单一联机房间：有未满的房间就加入，否则自动新建（玩家无感知）
                 target = None
+                for active_room in ROOMS.values():
+                    prune_players(active_room)
                 for c, r in ROOMS.items():
                     if r.get("mode") != "versus" and r["players"]:
                         continue
@@ -413,7 +433,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not target:
                     code = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=4))
                     room = {
-                        "code": code, "created": time.time(), "phase": "lobby",
+                        "code": code, "created": time.time(), "phase": "lobby", "mode": "versus",
                         "players": {}, "level": 0, "maze": None, "items": [],
                         "start_at": 0, "level_started": 0, "level_elapsed": 0,
                     }
@@ -435,6 +455,12 @@ class Handler(BaseHTTPRequestHandler):
             if not room:
                 return self.send_json({"ok": False, "error": "房间不存在"}, 404)
 
+            prune_players(room)
+
+            if path == "/api/leave":
+                room["players"].pop(token, None)
+                return self.send_json({"ok": True})
+
             if path == "/api/join":
                 if room.get("mode") == "solo":
                     return self.send_json({"ok": False, "error": "单人挑战房间不能加入其他玩家"}, 403)
@@ -452,6 +478,7 @@ class Handler(BaseHTTPRequestHandler):
             player = room["players"].get(token)
             if not player:
                 return self.send_json({"ok": False, "error": "请先加入房间"}, 403)
+            player["last_seen"] = time.time()
 
             if path == "/api/input":
                 values = body.get("input")
