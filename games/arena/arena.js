@@ -71,6 +71,7 @@ window.ChallengeArena = (function () {
       pushing: false,
       stateData: null,
       lastProgress: "",
+      started: false,
       pollTimer: null,
       pushTimer: null,
       leaving: false,
@@ -382,6 +383,7 @@ window.ChallengeArena = (function () {
     }
 
     function begin(stateData) {
+      state.started = true;
       root.classList.add("hidden");
       root.querySelector(".arena-statusbar").classList.remove("hidden");
       statusText.textContent = `${state.name} · Seed ${stateData.seed || 0}`;
