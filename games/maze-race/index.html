@@ -40,6 +40,13 @@
     #overlayDesc { color:#a8c1d8; font-size:14px; margin:0 0 18px; }
     .controls { margin-top:14px; color:#8fb1c9; font-size:12px; line-height:1.8; }
     kbd { background:#12283d; border:1px solid #3a576f; padding:2px 6px; border-radius:5px; }
+    .touch-pad { display:grid; grid-template-columns:repeat(3,54px); gap:7px; justify-content:center; margin:14px auto 0; }
+    .touch-pad button { width:54px; height:46px; padding:0; border:1px solid #3a576f; border-radius:12px; background:#12283d; color:#dff6ff; font-size:20px; }
+    .touch-pad button:first-child { grid-column:2; }
+    .touch-pad button:nth-child(2) { grid-column:1; grid-row:2; }
+    .touch-pad button:nth-child(3) { grid-column:2; grid-row:2; }
+    .touch-pad button:nth-child(4) { grid-column:3; grid-row:2; }
+    .touch-pad button:active { background:#25638a; transform:scale(.96); }
   </style>
 </head>
 <body>
@@ -53,12 +60,11 @@
     <div id="connectCard" class="card">
       <label>你的名字</label>
       <input id="nameInput" maxlength="12" placeholder="小学生选手">
-      <label>房间码</label>
       <div class="row">
         <button id="soloBtn" class="primary">🧍 单人挑战</button>
-        <button id="joinBtn" class="secondary">🎮 进入房间</button>
+        <button id="joinBtn" class="secondary">🎮 进入公共大厅</button>
       </div>
-      <p>可以一个人挑战，也可以创建/加入房间和另一台 Mac 对战。</p>
+      <p>多人无需创建房间，直接进入公共大厅；有玩家加入后即可开始比赛。</p>
       <div id="connectMsg"></div>
     </div>
 
@@ -82,6 +88,12 @@
         移动：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向键 · 
         👟 加速可叠加，每层更长更快 · 👻 短暂穿墙 · 🐌 减速对手 · 🪙 金币 · 
         道具对每位玩家独立刷新
+      </div>
+      <div class="touch-pad" aria-label="direction controls">
+        <button data-move="up">▲</button>
+        <button data-move="left">◀</button>
+        <button data-move="down">▼</button>
+        <button data-move="right">▶</button>
       </div>
     </div>
   </main>
