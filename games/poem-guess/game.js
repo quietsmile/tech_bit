@@ -160,9 +160,10 @@
 
     /* 选项：每题随机洗牌，正确位置随机 */
     els.options.innerHTML = "";
+    /* 单人模式用真随机；联机 PK 用同一 seed 给两端生成一致且随机的选项顺序。 */
     var optionSeed = state.seed
       ? (state.seed ^ hashString(q.image + "|" + q.title + "|" + state.index)) >>> 0
-      : 0;
+      : (Math.random() * 4294967296) >>> 0;
     seededShuffle(q.options, optionSeed).forEach(function (text) {
       var btn = document.createElement("button");
       btn.className = "option";
