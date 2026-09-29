@@ -106,6 +106,19 @@ def can_stay(maze, px, py, ghost=False):
     return True
 
 
+def nearest_safe_position(maze, px, py):
+    """把穿墙结束但卡在墙里的玩家送到最近的可站立格心。"""
+    candidates = []
+    for cell in maze["cells"]:
+        cx = cell["x"] * CELL + CELL / 2
+        cy = cell["y"] * CELL + CELL / 2
+        candidates.append(((cx - px) ** 2 + (cy - py) ** 2, cx, cy))
+    for _distance, cx, cy in sorted(candidates):
+        if can_stay(maze, cx, cy):
+            return cx, cy
+    return None
+
+
 def make_player(slot, name):
     emoji = PLAYER_EMOJIS[slot % len(PLAYER_EMOJIS)]
     return {
@@ -124,6 +137,7 @@ def make_player(slot, name):
         "shield_until": 0,
         "frozen_until": 0,
         "reverse_until": 0,
+        "wall_escape_until": 0,
         "finished": False,
         "finish_time": 0,
         "input": [False, False, False, False],
@@ -178,6 +192,7 @@ def start_level(room, level):
             "shield_until": 0,
             "frozen_until": 0,
             "reverse_until": 0,
+            "wall_escape_until": 0,
             "input": [False, False, False, False],
             "collected_items": set(),
         })
@@ -213,6 +228,19 @@ def tick_room(room):
             player["frozen_until"] = 0
         if player["reverse_until"] and now >= player["reverse_until"]:
             player["reverse_until"] = 0
+        if player["ghost_until"] and now >= player["ghost_until"]:
+            player["ghost_until"] = 0
+            if not can_stay(room["maze"], player["px"], player["py"]):
+                player["wall_escape_until"] = now + 2
+
+        if player.get("wall_escape_until") and now >= player["wall_escape_until"]:
+            if can_stay(room["maze"], player["px"], player["py"]):
+                player["wall_escape_until"] = 0
+            else:
+                safe_position = nearest_safe_position(room["maze"], player["px"], player["py"])
+                if safe_position:
+                    player["px"], player["py"] = safe_position
+                player["wall_escape_until"] = 0
 
         inp = player["input"]
         if now < player["reverse_until"]:
@@ -231,7 +259,9 @@ def tick_room(room):
         if now < player["slowed_until"]:
             speed *= 0.55
 
-        ghost = now < player["ghost_until"]
+        ghost = now < player["ghost_until"] or now < player.get("wall_escape_until", 0)
+        if not ghost and can_stay(room["maze"], player["px"], player["py"]):
+            player["wall_escape_until"] = 0
         if now < player["frozen_until"]:
             continue
         nx = player["px"] + dx * speed * 0.016
@@ -305,15 +335,18 @@ def tick_room(room):
                     room["items"].append(make_item(x, y))
                     break
 
+    for player in room["players"].values():
         cx = int(player["px"] // CELL)
         cy = int(player["py"] // CELL)
         if cx == LEVELS[room["level"]]["cols"] - 1 and cy == LEVELS[room["level"]]["rows"] - 1:
-            player["finished"] = True
-            player["finish_time"] = room["level_elapsed"]
-            player["score"] += 50
+            if not player["finished"]:
+                player["finished"] = True
+                player["finish_time"] = room["level_elapsed"]
+                player["score"] += 50
 
     if room["players"] and all(p["finished"] for p in room["players"].values()):
         room["phase"] = "level_done"
+        room["level_done_at"] = now
 
 
 def public_player(player, now):
