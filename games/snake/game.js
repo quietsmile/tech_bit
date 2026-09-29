@@ -14,7 +14,7 @@
   var MAX_FOODS = 7;
   var FOOD_INTERVAL = 3;
   var ONLINE_MAX_FOODS = 16;
-  var ONLINE_FOOD_INTERVAL = 2;
+  var ONLINE_FOOD_INTERVAL = 0.6;
   var ONLINE_MAX_PLAYERS = 6;
   var BASE_MS = 640;             // 初始速度再放慢一倍
   var MIN_MS = 60;               // 最快速度
@@ -80,7 +80,9 @@
     seed: 0,
     pk: null,
     scores: {},
-    statusTimer: null
+    statusTimer: null,
+    lastGuestTokens: [],
+    hostGameSeat: 0
   };
   var seats = []; // 房主模式：所有蛇（座位 0=房主）
 
@@ -120,11 +122,12 @@
       scoreboardEl.innerHTML = '<div class="score-empty">等待开始</div>';
       return;
     }
-    scoreboardEl.innerHTML = players.map(function (player, index) {
+    var rows = players.slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    scoreboardEl.innerHTML = rows.map(function (player, index) {
       var colors = SEAT_COLORS[player.seat == null ? index : player.seat] || SEAT_COLORS[0];
       var stateClass = player.alive === false ? ' dead' : '';
       return '<div class="score-row' + stateClass + '" style="--player-color:' + colors.body + '">' +
-        '<span>' + escapeHtml(player.id || ('玩家' + (index + 1))) + '</span>' +
+        '<span>' + (index + 1) + '. ' + escapeHtml(player.id || ('玩家' + (index + 1))) + '</span>' +
         '<span class="player-score">' + (player.score || 0) + '</span>' +
         '</div>';
     }).join('');
@@ -657,6 +660,33 @@
     return ids;
   }
 
+  function addSharedPlayer(seatIdx, id) {
+    if (seats[seatIdx]) return;
+    var occupied = seats.filter(Boolean).reduce(function (all, sn) {
+      return all.concat(sn.body);
+    }, []).concat(online.foods || []);
+    var spawn = findSafeSpawn(occupied);
+    var snake = makeSnake(spawn.body, spawn.dir, id, seatIdx);
+    seats[seatIdx] = snake;
+    drawScene(hostScene());
+    broadcast();
+  }
+
+  function resetOnlineSnakeAt(seatIdx) {
+    var sn = seats[seatIdx];
+    if (!sn) return;
+    var occupied = seats.filter(function (_item, index) { return index !== seatIdx; })
+      .reduce(function (all, other) { return all.concat(other.body); }, [])
+      .concat(online.foods || []);
+    var spawn = findSafeSpawn(occupied);
+    var fresh = makeSnake(spawn.body, spawn.dir, sn.id, seatIdx);
+    seats[seatIdx] = fresh;
+    if (seatIdx === online.hostGameSeat) scoreEl.textContent = fresh.score;
+    updateScoreboard(seats);
+    drawScene(hostScene());
+    broadcast();
+  }
+
   function startHostRound() {
     if (online.mode === 'pk') return startPkHostRound();
     var guestCount = Math.min(online.guests.length, ONLINE_MAX_PLAYERS - 1);
@@ -733,7 +763,8 @@
       if (sn.spawnGrace > 0) sn.spawnGrace--;
     }
 
-    scoreEl.textContent = seats[0].score;
+    var ownSeat = online.hostGameSeat || 0;
+    scoreEl.textContent = seats[ownSeat] ? seats[ownSeat].score : 0;
     updateScoreboard(seats);
     if (rankListEl) {
       rankListEl.classList.remove('hidden');
@@ -813,7 +844,7 @@
       roundId: online.roundId,
       status: online.finished ? 'over' : 'playing',
       seed: online.seed,
-      foods: initial ? online.pkInitialFoods : null,
+      foods: online.pkInitialFoods || [],
       players: pkSeatStatuses()
     };
   }
@@ -977,16 +1008,33 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data.ok) return;
+        var previousGuests = online.lastGuestTokens.slice();
         online.guests = data.guests || [];
         online.playerIds = data.player_ids || online.playerIds || [];
-        var guestCountChanged = online.guests.length !== online.lastGuestCount;
-        if (guestCountChanged && online.guests.length > 0) {
-          online.guestSeen = true;
-        }
-        if (guestCountChanged && online.guestSeen) {
+        var added = online.guests.filter(function (token) { return previousGuests.indexOf(token) < 0; });
+        var removed = previousGuests.filter(function (token) { return online.guests.indexOf(token) < 0; });
+
+        if (!seats.length && !online.pk) {
           startHostRound();
+        } else if (added.length && !online.finished) {
+          added.forEach(function (token, offset) {
+            var seatIdx = online.guests.indexOf(token) + 1;
+            var id = online.playerIds[seatIdx] || ('玩家' + (seatIdx + 1));
+            if (online.mode === 'shared') addSharedPlayer(seatIdx, id);
+          });
+          if (online.mode === 'pk') broadcast();
         }
+
+        if (online.mode === 'shared') {
+          removed.forEach(function (token) {
+            var seatIdx = previousGuests.indexOf(token) + 1;
+            if (seats[seatIdx]) seats.splice(seatIdx, 1);
+          });
+        }
+
+        online.lastGuestTokens = online.guests.slice();
         online.lastGuestCount = online.guests.length;
+
         for (var i = 0; i < data.inputs.length; i++) {
           var wrapped = data.inputs[i];
           var input = wrapped && wrapped.input;
@@ -996,6 +1044,10 @@
             if (input.pkStatus) online.scores[wrapped.token] = input.pkStatus;
             continue;
           }
+          if (input.resetSelf) {
+            resetOnlineSnakeAt(seatIdx);
+            continue;
+          }
           if (!input.dir) continue;
           var sn = seats[seatIdx];
           if (!sn || !sn.alive) continue;
@@ -1003,6 +1055,46 @@
         }
       })
       .catch(function () {});
+  }
+
+  function resumeHostFromState(state, ownId) {
+    if (!state || state.status !== 'playing') return false;
+    online.mode = state.mode || 'shared';
+    if (online.mode === 'shared') {
+      seats = (state.snakes || []).map(function (row, seat) {
+        var sn = makeSnake(row.body || [], row.dir || { x: 1, y: 0 }, row.id, seat);
+        sn.alive = row.alive !== false;
+        sn.score = row.score || 0;
+        return sn;
+      });
+      online.hostGameSeat = Math.max(0, seats.findIndex(function (sn) { return sn.id === ownId; }));
+      online.foods = (state.foods || []).map(function (food) { return { x: food.x, y: food.y, type: food.type, value: food.value }; });
+      online.speed = BASE_MS;
+      online.finished = false;
+      state = 'playing';
+      overlay.classList.add('hidden');
+      updateScoreboard(seats);
+      drawScene(hostScene());
+      if (online.timer) clearTimeout(online.timer);
+      online.timer = setTimeout(hostTick, currentOnlineSpeed());
+      broadcast();
+      return true;
+    }
+    if (online.mode === 'pk') {
+      online.roundId = state.roundId;
+      online.seed = state.seed || 0;
+      online.pkInitialFoods = (state.foods || []).map(function (food) { return { x: food.x, y: food.y, type: food.type, value: food.value }; });
+      online.scores = {};
+      online.finished = false;
+      if (online.timer) clearInterval(online.timer);
+      online.timer = setInterval(function () {
+        updateScoreboard(pkSeatStatuses());
+        broadcast();
+      }, 600);
+      startPkClient(state);
+      return true;
+    }
+    return false;
   }
 
   function joinOnline() {
@@ -1016,7 +1108,7 @@
     playerId = (playerIdInput.value || '').trim().slice(0, 12) || randomSnakeName();
     playerIdInput.value = playerId;
     function enterLobby(token, retried) {
-      return postJSON('/api/relay/auto', { game: 'snake', token: token, player_id: playerId }).then(function (data) {
+      return postJSON('/api/relay/auto', { game: onlineMode === 'pk' ? 'snake-pk' : 'snake', token: token, player_id: playerId }).then(function (data) {
         if (!data.ok && token && !retried) {
           sessionStorage.removeItem('snake_relay_token');
           return enterLobby('', true);
@@ -1042,11 +1134,14 @@
         mode = 'host';
         online.guestSeen = false;
         online.lastGuestCount = -1;
+        online.lastGuestTokens = [];
         overlayTitle.textContent = '🌐 已进入联机大厅';
         overlayText.textContent = online.mode === 'pk'
-          ? '你是房主 · 独立地图 PK（1–6人），稍后自动开局'
-          : '你是房主 · 共同地图（1–6人），稍后自动开局';
-        setTimeout(startHostRound, 1200);
+          ? '你是房主 · 独立地图 PK（1–6人）'
+          : '你是房主 · 共同地图（1–6人）';
+        if (!resumeHostFromState(data.state, online.playerId)) {
+          setTimeout(startHostRound, 1200);
+        }
         if (online.pollTimer) clearInterval(online.pollTimer);
         online.pollTimer = setInterval(pollHostInputs, 250);
       } else {
@@ -1132,6 +1227,10 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data.ok) {
+          if (data.error === 'player-left') {
+            joinOnline();
+            return;
+          }
           clearInterval(online.pollTimer);
           sessionStorage.removeItem('snake_relay_token');
           localStorage.removeItem('snake_relay_token');
@@ -1235,7 +1334,7 @@
       return;
     }
     if (mode === 'host') {
-      var hostSnake = seats[0];
+      var hostSnake = seats[online.hostGameSeat || 0];
       if (!hostSnake || !hostSnake.alive) return;
       if (direction[0] !== -hostSnake.dir.x || direction[1] !== -hostSnake.dir.y) {
         hostSnake.nextDir = { x: direction[0], y: direction[1] };
@@ -1321,15 +1420,22 @@
     if (mode === 'guest' || mode === 'menu') return;
     if (state !== 'over') togglePause();
   });
-  restartBtn.addEventListener('click', function () {
-    if (mode === 'host') { startHostRound(); return; }
-    if (mode === 'guest') return;
+  function resetOwnOnlineState() {
+    if (mode === 'host') {
+      if (online.mode === 'pk') return startPkClient(pkScene(true));
+      return resetOnlineSnakeAt(online.hostGameSeat || 0);
+    }
+    if (mode === 'guest') {
+      if (online.mode === 'pk') return startPkClient(pkScene(true));
+      if (online.code && online.token) {
+        postJSON('/api/relay/input', { code: online.code, token: online.token, input: { resetSelf: true } }).catch(function () {});
+      }
+      return;
+    }
     start();
-  });
-  overlayRestart.addEventListener('click', function () {
-    if (mode === 'host') startHostRound();
-    else start();
-  });
+  }
+  restartBtn.addEventListener('click', resetOwnOnlineState);
+  overlayRestart.addEventListener('click', resetOwnOnlineState);
 
   exitBtn.addEventListener('click', function () {
     clearTimeout(timer);

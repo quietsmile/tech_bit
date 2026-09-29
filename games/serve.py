@@ -47,7 +47,7 @@ def relay_prune():
         RELAY_ROOMS.pop(code, None)
 
 
-RELAY_GAME_CODES = {"snake": "SNAKE", "td-match": "TDMATCH"}
+RELAY_GAME_CODES = {"snake": "SNAKE", "snake-pk": "SNAKEPK", "td-match": "TDMATCH"}
 RELAY_MAX_PLAYERS = 6
 
 
@@ -89,7 +89,8 @@ def relay_auto(game, token, player_id="玩家"):
         room["host_seen"] = now
         room["host_id"] = player_id or room.get("host_id") or "玩家1"
         return {"ok": True, "code": code, "token": token, "role": "host", "seat": 0,
-                "player_id": room["host_id"], "max_players": RELAY_MAX_PLAYERS}
+                "player_id": room["host_id"], "max_players": RELAY_MAX_PLAYERS,
+                "state": room.get("state")}
     # 重连：token 已是客人
     if token and token in room["guests"]:
         relay_touch_guest(room, token, now)
@@ -98,16 +99,18 @@ def relay_auto(game, token, player_id="玩家"):
                 "role": "guest", "seat": room["guests"].index(token) + 1,
                 "player_id": room["guest_ids"][token], "max_players": RELAY_MAX_PLAYERS}
 
-    # 房主离线超过 90 秒则释放房主位
+    # 房主离线时迁移房主，保留房间状态，避免共同地图被重置。
     if room["host_token"] and now - room.get("host_seen", 0) > 30:
-        room["guests"] = []
-        room["guest_seen"] = {}
-        room["guest_ids"] = {}
-        room["host_id"] = ""
-        room["state"] = None
-        room["version"] += 1
-        room["host_token"] = ""
-        room["host_token"] = ""
+        if room["guests"]:
+            room["host_token"] = room["guests"].pop(0)
+            room["host_seen"] = now
+            room["host_id"] = room.get("guest_ids", {}).pop(room["host_token"], "玩家1")
+            room["guest_seen"][room["host_token"]] = now
+        else:
+            room["guest_ids"] = {}
+            room["host_id"] = ""
+            room["state"] = None
+            room["version"] += 1
 
     # 空缺的房主位：第一个没有主人的房间由他接管
     if not room["host_token"]:
@@ -433,12 +436,16 @@ class Handler(SimpleHTTPRequestHandler):
                     return
                 if action == "leave":
                     if token == room.get("host_token"):
-                        room["host_token"] = ""
-                        room["host_seen"] = 0
-                        room["guests"] = []
-                        room["guest_seen"] = {}
-                        room["guest_ids"] = {}
-                        room["state"] = None
+                        if room["guests"]:
+                            room["host_token"] = room["guests"].pop(0)
+                            room["host_seen"] = time.time()
+                            room["host_id"] = room.get("guest_ids", {}).pop(room["host_token"], "玩家1")
+                            room["guest_seen"][room["host_token"]] = time.time()
+                        else:
+                            room["host_token"] = ""
+                            room["host_seen"] = 0
+                            room["guest_ids"] = {}
+                            room["state"] = None
                         room["inputs"] = []
                         room["version"] += 1
                     elif token in room.get("guests", []):
